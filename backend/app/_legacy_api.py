@@ -34,17 +34,17 @@ import anthropic
 
 load_dotenv(override=True)
 
-from jd_parser import fetch_jd_text, extract_jd_structured
-from resume_parser import parse_resume
-from github_parser import parse_github_profile
-from project_matcher import match_and_tailor, rank_projects_for_jd
-from resume_builder import build_resume, FontConfig
-from cover_letter import (
+from app.services.jd_parser import fetch_jd_text, extract_jd_structured
+from app.services.resume_parser import parse_resume
+from app.services.github_parser import parse_github_profile
+from app.services.project_matcher import match_and_tailor, rank_projects_for_jd
+from app.services.resume_builder import build_resume, FontConfig
+from app.services.cover_letter import (
     generate_cover_letter_text,
     build_cover_letter_docx,
     revise_cover_letter,
 )
-from scorer import (
+from app.services.scorer import (
     score_resume,
     extract_resume_text,
     score_card_markdown,
