@@ -34,7 +34,6 @@ import anthropic
 
 load_dotenv(override=True)
 
-# ── Import all backend modules ────────────────────────────────────────────────
 from jd_parser import fetch_jd_text, extract_jd_structured
 from resume_parser import parse_resume
 from github_parser import parse_github_profile
@@ -53,7 +52,6 @@ from scorer import (
     gap_analysis_markdown,
 )
 
-# ── App setup ─────────────────────────────────────────────────────────────────
 app = FastAPI(title="ResumeForge API", version="1.0.0")
 
 app.add_middleware(
@@ -64,7 +62,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── In-memory file store (maps file_id → absolute path) ──────────────────────
 # In production you'd use Redis or a DB. For local + Railway this is fine.
 FILE_STORE: dict[str, str] = {}
 
@@ -96,7 +93,6 @@ def _sse_line(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
 
-# ── Helper: save uploaded file to temp ────────────────────────────────────────
 async def _save_upload(file: UploadFile) -> str:
     suffix = Path(file.filename).suffix if file.filename else ".pdf"
     tmp = tempfile.mktemp(suffix=suffix, prefix="rf_upload_")
@@ -105,9 +101,7 @@ async def _save_upload(file: UploadFile) -> str:
     return tmp
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 1 — Analyse JD + Resume (fast, ~10-15s, no streaming needed)
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.post("/api/analyse")
@@ -125,13 +119,18 @@ async def analyse(
 
     # JD
     jd_raw = ""
+    jd_url_error = ""
     if jd_url.strip():
         r = fetch_jd_text(jd_url.strip())
         if r["success"]:
             jd_raw = r["text"]
+        else:
+            jd_url_error = r.get("error", "")
     if not jd_raw and jd_text.strip():
         jd_raw = jd_text.strip()
     if not jd_raw:
+        if jd_url_error:
+            raise HTTPException(400, jd_url_error)
         raise HTTPException(400, "Provide a job URL or paste the JD text.")
 
     jd_structured = extract_jd_structured(jd_raw, client)
@@ -175,9 +174,7 @@ async def analyse(
     }
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 2 — Fetch + Rank GitHub Projects  (SSE streaming)
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.post("/api/fetch-projects")
@@ -212,7 +209,7 @@ async def fetch_projects(
                     gh,
                     client,
                     token=token,
-                    max_repos=30,
+                    max_repos=100,
                     progress_callback=lambda m: log_queue.append(m),
                 )
                 if not gh_result["success"]:
@@ -258,9 +255,7 @@ async def fetch_projects(
     )
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 3 — Generate Resume  (SSE streaming)
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.post("/api/generate")
@@ -419,9 +414,7 @@ async def generate_resume(
     )
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 4 — Edit Resume
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.post("/api/edit-resume")
@@ -504,9 +497,7 @@ Return the complete updated JSON payload. Same structure. No markdown fences. No
     }
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 5 — Generate Cover Letter
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.post("/api/cover-letter")
@@ -517,6 +508,8 @@ async def generate_cover_letter(
     resume_data: str = Form(...),  # JSON
     matched_payload: str = Form(...),  # JSON
     selected_keywords: str = Form("[]"),  # JSON
+    font_size: str = Form("10.5"),
+    bold_body: str = Form("false"),
     api_key: str = Form(""),
 ):
     client = _get_client(api_key)
@@ -524,6 +517,8 @@ async def generate_cover_letter(
     resume_dict = json.loads(resume_data)
     matched = json.loads(matched_payload)
     keywords = json.loads(selected_keywords)
+    fs = float(font_size) if font_size else 10.5
+    bold = bold_body.lower() == "true"
 
     letter_text = generate_cover_letter_text(
         jd_structured=jd_dict,
@@ -534,7 +529,9 @@ async def generate_cover_letter(
         client=client,
         extra_instructions=extra_instructions.strip(),
     )
-    cl_result = build_cover_letter_docx(letter_text, resume_dict, jd_dict)
+    cl_result = build_cover_letter_docx(
+        letter_text, resume_dict, jd_dict, font_size=fs, bold_body=bold
+    )
 
     docx_path = cl_result.get("docx_path")
     pdf_path = cl_result.get("pdf_path")
@@ -548,9 +545,7 @@ async def generate_cover_letter(
     }
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 6 — Edit Cover Letter
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.post("/api/edit-cover-letter")
@@ -559,16 +554,22 @@ async def edit_cover_letter(
     letter_text: str = Form(...),
     jd_structured: str = Form(...),  # JSON
     resume_data: str = Form(...),  # JSON
+    font_size: str = Form("10.5"),
+    bold_body: str = Form("false"),
     api_key: str = Form(""),
 ):
     client = _get_client(api_key)
     jd_dict = json.loads(jd_structured)
     resume_dict = json.loads(resume_data)
+    fs = float(font_size) if font_size else 10.5
+    bold = bold_body.lower() == "true"
 
     updated_text = revise_cover_letter(
         letter_text, edit_instructions, jd_dict, resume_dict, client
     )
-    cl_result = build_cover_letter_docx(updated_text, resume_dict, jd_dict)
+    cl_result = build_cover_letter_docx(
+        updated_text, resume_dict, jd_dict, font_size=fs, bold_body=bold
+    )
 
     docx_path = cl_result.get("docx_path")
     pdf_path = cl_result.get("pdf_path")
@@ -582,9 +583,7 @@ async def edit_cover_letter(
     }
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 7 — Download File
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.get("/api/download/{file_id}")
@@ -612,9 +611,7 @@ async def download_file(file_id: str):
     )
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 8 — Health
-# ═════════════════════════════════════════════════════════════════════════════
 
 
 @app.get("/api/health")
@@ -622,7 +619,6 @@ async def health():
     return {"status": "ok", "service": "ResumeForge API"}
 
 
-# ── Dev server ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
 

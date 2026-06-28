@@ -22,7 +22,6 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 
-# ── Cover letter generation ────────────────────────────────────────────────────
 
 
 def generate_cover_letter_text(
@@ -110,7 +109,6 @@ No subject line. No date. No sign-off. No name at the end."""
     return response.content[0].text.strip()
 
 
-# ── .docx builder ─────────────────────────────────────────────────────────────
 
 
 def _spacing(para, before=0, after=0):
@@ -168,7 +166,6 @@ def build_cover_letter_docx(
 
         doc = Document()
 
-        # ── Same page setup as resume_builder ─────────────────────────────
         for sec in doc.sections:
             sec.page_width = Mm(210)
             sec.page_height = Mm(297)
@@ -200,7 +197,6 @@ def build_cover_letter_docx(
             pBdr.append(bot)
             pPr.append(pBdr)
 
-        # ── Header: large centred name (same as resume) ────────────────────
         p_name = doc.add_paragraph()
         p_name.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(p_name, before=0, after=10)
@@ -210,7 +206,6 @@ def build_cover_letter_docx(
         r.font.color.rgb = BLACK
         r.font.name = "Calibri"
 
-        # ── Contact line: Location | Phone | Email | LinkedIn | GitHub ─────
         p_contact = doc.add_paragraph()
         p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(p_contact, before=0, after=60)
@@ -253,7 +248,6 @@ def build_cover_letter_docx(
             _run(p_contact, sep, size=cs, color=GREY)
             _add_hyperlink_cl(p_contact, "GitHub", gh_url, size=cs)
 
-        # ── Strip any sign-off Claude already added (we add our own below) ──
         SIGNOFF_PATTERNS = [
             "sincerely,",
             "best regards,",
@@ -276,7 +270,6 @@ def build_cover_letter_docx(
             lines.pop()
         letter_clean = "\n".join(lines).strip()
 
-        # ── Letter body ────────────────────────────────────────────────────
         paragraphs = [p.strip() for p in letter_clean.split("\n\n") if p.strip()]
         for i, para_text in enumerate(paragraphs):
             p = doc.add_paragraph()
@@ -291,7 +284,6 @@ def build_cover_letter_docx(
             r2.font.color.rgb = BLACK
             r2.font.name = "Calibri"
 
-        # ── Closing ────────────────────────────────────────────────────────
         p_sig = doc.add_paragraph()
         _spacing(p_sig, before=200, after=0)
         _run(p_sig, "Sincerely,", size=10.5)

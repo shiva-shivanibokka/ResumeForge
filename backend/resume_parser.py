@@ -12,9 +12,7 @@ import io
 from pathlib import Path
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # TEXT EXTRACTION
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -47,18 +45,65 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
 
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
-    """Extract plain text from a .docx file."""
+    """
+    Extract plain text from a .docx file.
+    Also resolves hyperlinks — replaces display text like 'LinkedIn' or 'GitHub'
+    with the actual underlying URL so the parser can extract the real link.
+    """
     try:
         import docx
+        from docx.oxml.ns import qn
+        from lxml import etree
 
         doc = docx.Document(io.BytesIO(file_bytes))
-        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+
+        def _para_text_with_hyperlinks(para) -> str:
+            """
+            Return paragraph text, substituting hyperlink display text with the
+            actual URL wherever the underlying URL is a LinkedIn or GitHub link.
+            """
+            # Relationships for this paragraph's part
+            rels = para.part.rels
+
+            result = []
+            for child in para._p:
+                tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                if tag == "hyperlink":
+                    # Get the relationship id
+                    r_id = child.get(qn("r:id"))
+                    url = ""
+                    if r_id and r_id in rels:
+                        url = rels[r_id].target_ref or ""
+                    # Get display text
+                    display = "".join(t.text for t in child.iter(qn("w:t")) if t.text)
+                    # If the URL is a LinkedIn or GitHub link, emit the URL instead
+                    if url and ("linkedin.com" in url or "github.com" in url):
+                        result.append(url)
+                    else:
+                        result.append(display)
+                elif tag == "r":
+                    # Normal run — grab text
+                    for t in child.iter(qn("w:t")):
+                        if t.text:
+                            result.append(t.text)
+            return "".join(result)
+
+        paragraphs = []
+        for para in doc.paragraphs:
+            text = _para_text_with_hyperlinks(para).strip()
+            if text:
+                paragraphs.append(text)
+
         # Also grab text from tables
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    if cell.text.strip():
-                        paragraphs.append(cell.text.strip())
+                    cell_text = ""
+                    for para in cell.paragraphs:
+                        cell_text += _para_text_with_hyperlinks(para)
+                    if cell_text.strip():
+                        paragraphs.append(cell_text.strip())
+
         return "\n".join(paragraphs)
     except Exception as e:
         return f"[DOCX extraction failed: {e}]"
@@ -86,9 +131,7 @@ def extract_raw_text(file_path: str, file_bytes: bytes = None) -> str:
             return ""
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # REGEX FIELD EXTRACTION  (fast, no API call needed)
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _find_email(text: str) -> str:
@@ -132,9 +175,7 @@ def _find_name(text: str) -> str:
     return ""
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # CLAUDE-POWERED STRUCTURED EXTRACTION
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def parse_resume_with_claude(raw_text: str, client) -> dict:
@@ -206,15 +247,23 @@ RESUME TEXT:
             "summary": "",
         }
 
-    # Always patch contact fields with regex if Claude missed them
+    # Always patch contact fields with regex if Claude missed them or returned
+    # display text ("LinkedIn", "GitHub") instead of the actual URL
     if not parsed.get("email"):
         parsed["email"] = _find_email(raw_text)
     if not parsed.get("phone"):
         parsed["phone"] = _find_phone(raw_text)
-    if not parsed.get("linkedin"):
-        parsed["linkedin"] = _find_linkedin(raw_text)
-    if not parsed.get("github"):
-        parsed["github"] = _find_github(raw_text)
+    # Prefer regex URL over Claude's value if it looks like a real URL
+    regex_li = _find_linkedin(raw_text)
+    if regex_li and "linkedin.com" in regex_li:
+        parsed["linkedin"] = regex_li
+    elif not parsed.get("linkedin"):
+        parsed["linkedin"] = regex_li
+    regex_gh = _find_github(raw_text)
+    if regex_gh and "github.com" in regex_gh:
+        parsed["github"] = regex_gh
+    elif not parsed.get("github"):
+        parsed["github"] = regex_gh
     if not parsed.get("name"):
         parsed["name"] = _find_name(raw_text)
 

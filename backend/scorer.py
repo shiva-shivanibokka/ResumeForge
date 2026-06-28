@@ -186,7 +186,6 @@ def score_resume(resume_text: str, jd_text: str, client) -> dict:
         }
     """
 
-    # ── Pre-compute keyword match rate (deterministic, not LLM-based) ──────────
     # Extract candidate keywords from the JD: words 4+ chars, skip stopwords.
     _STOPWORDS = {
         "with",

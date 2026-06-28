@@ -18,7 +18,6 @@ import DownloadButtons from "./DownloadButtons"
 
 const FONTS = ["Calibri","Arial","Georgia","Times New Roman","Garamond","Cambria","Trebuchet MS"]
 
-// ── Small reusable UI ─────────────────────────────────────────────────────────
 
 function SectionPill({ step, label }: { step: number; label: string }) {
   return (
@@ -94,7 +93,6 @@ function StatusBadge({ type, message }: { type: "success"|"error"|"info"; messag
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ResumeForgeApp() {
   const [state, setState]         = useState<AppState>(INITIAL_STATE)
@@ -136,6 +134,8 @@ export default function ResumeForgeApp() {
   const [clTone, setClTone]                         = useState("Professional")
   const [clExtra, setClExtra]                       = useState("")
   const [clEditInstructions, setClEditInstructions] = useState("")
+  const [clFontSize, setClFontSize]                 = useState("10.5")
+  const [clBoldBody, setClBoldBody]                 = useState(false)
 
   // Preview visibility
   const [showPreview, setShowPreview]   = useState(true)
@@ -144,7 +144,6 @@ export default function ResumeForgeApp() {
   const update = useCallback((patch: Partial<AppState>) =>
     setState(s => ({ ...s, ...patch })), [])
 
-  // ── STEP 1: Analyse ──────────────────────────────────────────────────────
 
   async function handleAnalyse() {
     if (!resumeFile) { setAnalyseStatus({type:"error",msg:"Upload your resume first."}); return }
@@ -178,7 +177,6 @@ export default function ResumeForgeApp() {
     }
   }
 
-  // ── STEP 2: Fetch projects ────────────────────────────────────────────────
 
   async function handleFetchProjects() {
     if (!state.jdStructured) { setProjectStatus({type:"error",msg:"Complete Step 1 first."}); return }
@@ -205,7 +203,6 @@ export default function ResumeForgeApp() {
     }
   }
 
-  // ── STEP 3: Generate ─────────────────────────────────────────────────────
 
   async function handleGenerate() {
     if (!state.jdStructured || !state.resumeData) { setGenerateStatus({type:"error",msg:"Complete Step 1 first."}); return }
@@ -244,7 +241,6 @@ export default function ResumeForgeApp() {
     }
   }
 
-  // ── Edit ──────────────────────────────────────────────────────────────────
 
   async function handleEdit() {
     if (!state.matchedPayload || !state.resumeData) { setEditStatus({type:"error",msg:"Generate a resume first."}); return }
@@ -281,7 +277,6 @@ export default function ResumeForgeApp() {
     }
   }
 
-  // ── Clear resume result ───────────────────────────────────────────────────
 
   function handleClearResume() {
     update({
@@ -295,7 +290,6 @@ export default function ResumeForgeApp() {
     setEditInstructions("")
   }
 
-  // ── Clear cover letter result ─────────────────────────────────────────────
 
   function handleClearCoverLetter() {
     update({
@@ -306,7 +300,6 @@ export default function ResumeForgeApp() {
     setClEditInstructions("")
   }
 
-  // ── Cover letter ──────────────────────────────────────────────────────────
 
   async function handleCoverLetter() {
     if (!state.jdStructured || !state.resumeData || !state.matchedPayload) {
@@ -320,7 +313,8 @@ export default function ResumeForgeApp() {
       const res = await generateCoverLetter({
         tone: clTone, extraInstructions: clExtra,
         jdStructured: state.jdStructured, resumeData: state.resumeData,
-        matchedPayload: state.matchedPayload, selectedKeywords: allKeywords, apiKey,
+        matchedPayload: state.matchedPayload, selectedKeywords: allKeywords,
+        fontSize: clFontSize, boldBody: clBoldBody, apiKey,
       })
       update({ coverLetterText: res.letter_text,
                clDocxId: res.docx_id, clPdfId: res.pdf_id,
@@ -347,6 +341,7 @@ export default function ResumeForgeApp() {
         letterText: state.coverLetterText,
         jdStructured: state.jdStructured!,
         resumeData: state.resumeData!,
+        fontSize: clFontSize, boldBody: clBoldBody,
         apiKey,
       })
       update({ coverLetterText: res.letter_text,
@@ -362,7 +357,6 @@ export default function ResumeForgeApp() {
     }
   }
 
-  // ── Toggle keyword selection ──────────────────────────────────────────────
   function toggleRequired(kw: string) {
     update({ selectedRequired: state.selectedRequired.includes(kw)
       ? state.selectedRequired.filter(k => k !== kw)
@@ -379,7 +373,6 @@ export default function ResumeForgeApp() {
       : [...state.selectedProjectNames, name] })
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
 
   const hasAnalysed  = !!state.jdStructured
   const hasProjects  = state.rankedProjects.length > 0
@@ -388,7 +381,6 @@ export default function ResumeForgeApp() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* ── Header ── */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -408,7 +400,6 @@ export default function ResumeForgeApp() {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 
-        {/* ── API Keys ── */}
         {showKeys && (
           <Card className="border-indigo-100 bg-indigo-50/40">
             <div className="flex items-center justify-between mb-4">
@@ -425,14 +416,10 @@ export default function ResumeForgeApp() {
           </Card>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* STEP 1 — Analyse                                               */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
         <Card>
           <SectionPill step={1} label="Analyse Job Description & Resume" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:items-stretch">
-            {/* Left: JD */}
             <div className="flex flex-col gap-4">
               <Input label="Job Posting URL"
                 placeholder="Paste any job link — Jobright, LinkedIn, Greenhouse…"
@@ -441,7 +428,6 @@ export default function ResumeForgeApp() {
                 placeholder="Paste the full job description here…"
                 value={jdText} onChange={setJdText} rows={5} className="flex-1" />
             </div>
-            {/* Right: Resume + LinkedIn + GitHub */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Resume (PDF or .docx)</label>
@@ -491,9 +477,6 @@ export default function ResumeForgeApp() {
           <ProgressLog lines={analyseLogs} title="Analysis Log" />
         </Card>
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* GAP ANALYSIS                                                   */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
         {hasAnalysed && (
           <Card>
             <div className="flex items-center gap-2 mb-4">
@@ -502,7 +485,6 @@ export default function ResumeForgeApp() {
               <span className="text-xs text-slate-400 ml-1">Select keywords to weave into your resume</span>
             </div>
 
-            {/* Skill categories */}
             {state.jdStructured && (
               <div className="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
@@ -517,7 +499,6 @@ export default function ResumeForgeApp() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Required */}
               <div>
                 <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-2">
                   Required keywords missing ({state.requiredKeywords.length})
@@ -541,7 +522,6 @@ export default function ResumeForgeApp() {
                 </div>
               </div>
 
-              {/* Preferred */}
               <div>
                 <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2">
                   Preferred keywords missing ({state.preferredKeywords.length})
@@ -568,9 +548,6 @@ export default function ResumeForgeApp() {
           </Card>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* STEP 2 — Profile + GitHub                                      */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
         {hasAnalysed && (
           <Card>
             <SectionPill step={2} label="Profile Links & GitHub Projects" />
@@ -593,7 +570,6 @@ export default function ResumeForgeApp() {
               </div>
             </div>
 
-            {/* Font */}
             <div className="mb-5">
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Resume Font</label>
               <p className="text-xs text-slate-400 mb-2">Font sizes are auto-calculated to fill the page — just pick the family.</p>
@@ -622,7 +598,6 @@ export default function ResumeForgeApp() {
 
             <ProgressLog lines={projectLogs} title="GitHub Log" />
 
-            {/* Project selection */}
             {hasProjects && (
               <div className="mt-5">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
@@ -677,9 +652,6 @@ export default function ResumeForgeApp() {
           </Card>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* STEP 3 — Generate                                              */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
         {hasAnalysed && hasProjects && (
           <Card>
             <SectionPill step={3} label="Generate Tailored Resume" />
@@ -697,15 +669,10 @@ export default function ResumeForgeApp() {
           </Card>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* RESULTS                                                         */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
         {hasResume && (
           <>
-            {/* Score card */}
             {state.scores && <ScoreCard scores={state.scores} />}
 
-            {/* Preview + Downloads */}
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <span className="font-bold text-slate-800">Resume Preview & Download</span>
@@ -741,7 +708,6 @@ export default function ResumeForgeApp() {
               )}
             </Card>
 
-            {/* Edit */}
             <Card className="border-amber-100">
               <div className="flex items-center gap-2 mb-4">
                 <Wand2 className="w-5 h-5 text-amber-500" />
@@ -760,9 +726,6 @@ export default function ResumeForgeApp() {
               </div>
             </Card>
 
-            {/* ═══════════════════════════════════════════════════════════ */}
-            {/* COVER LETTER                                               */}
-            {/* ═══════════════════════════════════════════════════════════ */}
             <Card className="border-emerald-100">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
@@ -780,19 +743,49 @@ export default function ResumeForgeApp() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tone</label>
-                  <div className="flex gap-2">
-                    {["Professional","Conversational","Concise"].map(t => (
-                      <button key={t} onClick={() => setClTone(t)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
-                          clTone === t
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tone</label>
+                    <div className="flex gap-2">
+                      {["Professional","Conversational","Concise"].map(t => (
+                        <button key={t} onClick={() => setClTone(t)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                            clTone === t
+                              ? "bg-emerald-600 text-white border-emerald-600"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
+                          }`}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-end gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Body Font Size</label>
+                      <div className="flex gap-1.5">
+                        {["9","10","10.5","11","12"].map(sz => (
+                          <button key={sz} onClick={() => setClFontSize(sz)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              clFontSize === sz
+                                ? "bg-emerald-600 text-white border-emerald-600"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
+                            }`}>
+                            {sz}pt
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Style</label>
+                      <button onClick={() => setClBoldBody(v => !v)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                          clBoldBody
                             ? "bg-emerald-600 text-white border-emerald-600"
                             : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
                         }`}>
-                        {t}
+                        <strong>B</strong> Bold
                       </button>
-                    ))}
+                    </div>
                   </div>
                 </div>
                 <Textarea label="Additional instructions (optional)"
@@ -809,7 +802,6 @@ export default function ResumeForgeApp() {
                 {clStatus && <StatusBadge type={clStatus.type} message={clStatus.msg} />}
               </div>
 
-              {/* Cover letter result */}
               {hasCoverLetter && (
                 <div className="space-y-4 border-t border-emerald-100 pt-4">
                   <DownloadButtons
@@ -818,7 +810,6 @@ export default function ResumeForgeApp() {
                     label="Download Cover Letter"
                   />
 
-                  {/* Preview toggle */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">Preview</span>
                     <button onClick={() => setShowClPreview(v => !v)}
@@ -838,14 +829,12 @@ export default function ResumeForgeApp() {
                     </div>
                   )}
 
-                  {/* Text preview fallback */}
                   {showClPreview && !state.clPdfId && state.coverLetterText && (
                     <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 font-mono text-sm text-slate-700 whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto">
                       {state.coverLetterText}
                     </div>
                   )}
 
-                  {/* Edit cover letter */}
                   <div className="pt-2">
                     <Textarea label="Edit Cover Letter"
                       placeholder="'Make it more concise'  |  'Add enthusiasm about the company's AI work'  |  'Remove the last paragraph'"

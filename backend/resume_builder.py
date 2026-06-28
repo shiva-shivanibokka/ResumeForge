@@ -30,15 +30,12 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 
-# ── A4 page size ─────────────────────────────────────────────────────────────
 A4_WIDTH = Mm(210)
 A4_HEIGHT = Mm(297)
 
-# ── Colours ───────────────────────────────────────────────────────────────────
 BLACK = RGBColor(0x00, 0x00, 0x00)
 GREY = RGBColor(0x40, 0x40, 0x40)
 
-# ── Available fonts (ATS-safe, widely available in Word/LibreOffice) ──────────
 AVAILABLE_FONTS = [
     "Calibri",
     "Arial",
@@ -50,7 +47,6 @@ AVAILABLE_FONTS = [
     "Trebuchet MS",
 ]
 
-# ── Font configuration dataclass ─────────────────────────────────────────────
 
 
 @dataclass
@@ -74,7 +70,6 @@ class FontConfig:
 
 DEFAULT_FONT = FontConfig()
 
-# ── Font sizes: (1-page, 2-page) ──────────────────────────────────────────────
 FS = {
     "name": (20, 22),
     "contact": (8.5, 9),
@@ -84,7 +79,6 @@ FS = {
     "tech_stack": (7.5, 8.5),
 }
 
-# ── Spacing (before, after) in points × 20 = twips: (1-page, 2-page) ─────────
 SP = {
     "after_header": (20, 60),
     "section_before": (80, 120),
@@ -96,7 +90,6 @@ SP = {
 }
 
 
-# ── XML helpers ───────────────────────────────────────────────────────────────
 
 
 def _spacing(para, before=0, after=0, line=None):
@@ -192,7 +185,6 @@ def _add_hyperlink(para, text, url, size=9.0, font="Calibri"):
     return hyperlink
 
 
-# ── Document setup ────────────────────────────────────────────────────────────
 
 
 def _new_doc(one_page: bool, fc: FontConfig) -> Document:
@@ -228,7 +220,6 @@ def _new_doc(one_page: bool, fc: FontConfig) -> Document:
     return doc
 
 
-# ── Helpers using page mode ───────────────────────────────────────────────────
 
 
 def _fs(key, one_page):
@@ -239,7 +230,6 @@ def _sp(key, one_page):
     return SP[key][0 if one_page else 1]
 
 
-# ── HEADER ────────────────────────────────────────────────────────────────────
 
 
 def _add_header(doc, personal: dict, one_page: bool, fc: FontConfig = DEFAULT_FONT):
@@ -273,38 +263,29 @@ def _add_header(doc, personal: dict, one_page: bool, fc: FontConfig = DEFAULT_FO
     if parts_plain:
         _run(p_contact, sep.join(parts_plain), size=cs, color=BLACK)
 
-    # LinkedIn hyperlink
+    # LinkedIn — plain text full URL (no hyperlink styling)
     linkedin_url = personal.get("linkedin_url", "")
-    linkedin_txt = personal.get("linkedin", "LinkedIn")
-    if not linkedin_txt.startswith("http"):
-        linkedin_txt = "LinkedIn"
     if not linkedin_url:
-        # Build URL from whatever was parsed
         raw = personal.get("linkedin", "")
         if "linkedin.com" in raw:
             linkedin_url = "https://" + raw if not raw.startswith("http") else raw
         else:
-            linkedin_url = (
-                "https://www.linkedin.com/in/" + raw if raw else "https://linkedin.com"
-            )
+            linkedin_url = "https://www.linkedin.com/in/" + raw if raw else ""
+    if linkedin_url:
+        _run(p_contact, sep + linkedin_url, size=cs, color=BLACK)
 
-    _run(p_contact, sep, size=cs, color=BLACK)
-    _add_hyperlink(p_contact, "LinkedIn", linkedin_url, size=cs)
-
-    # GitHub hyperlink
+    # GitHub — plain text full URL (no hyperlink styling)
     github_url = personal.get("github_url", "")
     if not github_url:
         raw = personal.get("github", "")
         if "github.com" in raw:
             github_url = "https://" + raw if not raw.startswith("http") else raw
         else:
-            github_url = "https://github.com/" + raw if raw else "https://github.com"
+            github_url = "https://github.com/" + raw if raw else ""
+    if github_url:
+        _run(p_contact, sep + github_url, size=cs, color=BLACK)
 
-    _run(p_contact, sep, size=cs, color=BLACK)
-    _add_hyperlink(p_contact, "GitHub", github_url, size=cs)
 
-
-# ── SECTION HEADING ───────────────────────────────────────────────────────────
 
 
 def _section_heading(doc, title: str, one_page: bool, fc: FontConfig = DEFAULT_FONT):
@@ -321,7 +302,6 @@ def _section_heading(doc, title: str, one_page: bool, fc: FontConfig = DEFAULT_F
     return p
 
 
-# ── SKILLS ────────────────────────────────────────────────────────────────────
 
 
 def _add_skills(
@@ -345,7 +325,6 @@ def _add_skills(
         rr.font.name = fc.body_font
 
 
-# ── EXPERIENCE ────────────────────────────────────────────────────────────────
 
 
 def _add_experience(
@@ -387,7 +366,6 @@ def _add_experience(
             _bullet(doc, b, one_page, fc=fc)
 
 
-# ── BULLET ────────────────────────────────────────────────────────────────────
 
 
 def _bullet(doc, text: str, one_page: bool, indent=0.2, fc: FontConfig = DEFAULT_FONT):
@@ -405,7 +383,6 @@ def _bullet(doc, text: str, one_page: bool, indent=0.2, fc: FontConfig = DEFAULT
     return p
 
 
-# ── PROJECTS ──────────────────────────────────────────────────────────────────
 
 
 def _add_projects(
@@ -445,7 +422,6 @@ def _add_projects(
             _bullet(doc, b, one_page, fc=fc)
 
 
-# ── EDUCATION ─────────────────────────────────────────────────────────────────
 
 
 def _add_education(doc, education: list, one_page: bool, fc: FontConfig = DEFAULT_FONT):
@@ -490,7 +466,6 @@ def _add_education(doc, education: list, one_page: bool, fc: FontConfig = DEFAUL
             _run(pg, f"  GPA: {edu['gpa']}", size=bs, color=BLACK, font=fc.body_font)
 
 
-# ── FILENAME BUILDER ──────────────────────────────────────────────────────────
 
 
 def _build_filename(personal: dict, matched_payload: dict) -> str:
@@ -516,7 +491,6 @@ def _build_filename(personal: dict, matched_payload: dict) -> str:
     return "_".join(parts)
 
 
-# ── TYPOGRAPHIC RATIOS ────────────────────────────────────────────────────────
 # These ratios are fixed relative to body size — same as professional resume templates
 NAME_RATIO = 2.2  # name = body × 2.2
 HEADING_RATIO = 1.1  # section heading = body × 1.1
@@ -702,7 +676,6 @@ def auto_fit_font_size(
     return _make_fc(best_safe)
 
 
-# ── MAIN BUILD FUNCTION ───────────────────────────────────────────────────────
 
 
 def build_resume(

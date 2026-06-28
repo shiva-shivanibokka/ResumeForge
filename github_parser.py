@@ -18,9 +18,7 @@ import requests
 from typing import Optional
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # GITHUB API CLIENT
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _github_headers(token: Optional[str] = None) -> dict:
@@ -99,9 +97,7 @@ def _get_top_files(owner: str, repo: str, token: Optional[str] = None) -> list:
     return [item["name"] for item in data[:30]]
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # PROFILE + REPO LISTING
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def parse_github_url(github_url: str) -> Optional[str]:
@@ -152,9 +148,7 @@ def get_user_repos(
     return repos
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # PER-REPO CONTENT GATHERING
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def gather_repo_context(
@@ -184,9 +178,7 @@ def gather_repo_context(
     return context
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # CLAUDE-POWERED PROJECT SUMMARIZATION
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def summarize_repo_with_claude(repo_context: dict, client) -> dict:
@@ -281,9 +273,7 @@ Return only the JSON object. No markdown fences. No explanation."""
         }
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # MAIN ENTRY POINT
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def parse_github_profile(

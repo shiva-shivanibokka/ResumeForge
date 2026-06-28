@@ -22,7 +22,6 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 
-# ── Cover letter generation ────────────────────────────────────────────────────
 
 
 def generate_cover_letter_text(
@@ -110,7 +109,6 @@ No subject line. No date. No sign-off. No name at the end."""
     return next((b.text for b in response.content if hasattr(b, "text")), "").strip()
 
 
-# ── .docx builder ─────────────────────────────────────────────────────────────
 
 
 def _spacing(para, before=0, after=0):
@@ -154,6 +152,8 @@ def build_cover_letter_docx(
     personal: dict,
     jd_structured: dict,
     output_dir: str = None,
+    font_size: float = 10.5,
+    bold_body: bool = False,
 ) -> dict:
     """
     Save the cover letter as a formatted .docx.
@@ -168,7 +168,6 @@ def build_cover_letter_docx(
 
         doc = Document()
 
-        # ── Same page setup as resume_builder ─────────────────────────────
         for sec in doc.sections:
             sec.page_width = Mm(210)
             sec.page_height = Mm(297)
@@ -200,7 +199,6 @@ def build_cover_letter_docx(
             pBdr.append(bot)
             pPr.append(pBdr)
 
-        # ── Header: large centred name (same as resume) ────────────────────
         p_name = doc.add_paragraph()
         p_name.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(p_name, before=0, after=10)
@@ -210,7 +208,6 @@ def build_cover_letter_docx(
         r.font.color.rgb = BLACK
         r.font.name = "Calibri"
 
-        # ── Contact line: Location | Phone | Email | LinkedIn | GitHub ─────
         p_contact = doc.add_paragraph()
         p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(p_contact, before=0, after=60)
@@ -232,28 +229,23 @@ def build_cover_letter_docx(
         li_url = personal.get("linkedin_url", "")
         if not li_url and personal.get("linkedin", ""):
             raw = personal["linkedin"]
-            li_url = (
-                ("https://" + raw)
-                if "linkedin.com" in raw and not raw.startswith("http")
-                else raw
-            )
+            if "linkedin.com" in raw:
+                li_url = ("https://" + raw) if not raw.startswith("http") else raw
+            else:
+                li_url = "https://www.linkedin.com/in/" + raw if raw else ""
         if li_url:
-            _run(p_contact, sep, size=cs, color=GREY)
-            _add_hyperlink_cl(p_contact, "LinkedIn", li_url, size=cs)
+            _run(p_contact, sep + li_url, size=cs, color=GREY)
 
         gh_url = personal.get("github_url", "")
         if not gh_url and personal.get("github", ""):
             raw = personal["github"]
-            gh_url = (
-                ("https://" + raw)
-                if "github.com" in raw and not raw.startswith("http")
-                else raw
-            )
+            if "github.com" in raw:
+                gh_url = ("https://" + raw) if not raw.startswith("http") else raw
+            else:
+                gh_url = "https://github.com/" + raw if raw else ""
         if gh_url:
-            _run(p_contact, sep, size=cs, color=GREY)
-            _add_hyperlink_cl(p_contact, "GitHub", gh_url, size=cs)
+            _run(p_contact, sep + gh_url, size=cs, color=GREY)
 
-        # ── Strip any sign-off Claude already added (we add our own below) ──
         SIGNOFF_PATTERNS = [
             "sincerely,",
             "best regards,",
@@ -276,7 +268,6 @@ def build_cover_letter_docx(
             lines.pop()
         letter_clean = "\n".join(lines).strip()
 
-        # ── Letter body ────────────────────────────────────────────────────
         paragraphs = [p.strip() for p in letter_clean.split("\n\n") if p.strip()]
         for i, para_text in enumerate(paragraphs):
             p = doc.add_paragraph()
@@ -287,17 +278,17 @@ def build_cover_letter_docx(
             jc.set(qn("w:val"), "both")
             pPr.append(jc)
             r2 = p.add_run(para_text.replace("\n", " "))
-            r2.font.size = Pt(10.5)
+            r2.font.size = Pt(font_size)
+            r2.bold = bold_body
             r2.font.color.rgb = BLACK
             r2.font.name = "Calibri"
 
-        # ── Closing ────────────────────────────────────────────────────────
         p_sig = doc.add_paragraph()
         _spacing(p_sig, before=200, after=0)
-        _run(p_sig, "Sincerely,", size=10.5)
+        _run(p_sig, "Sincerely,", size=font_size)
         p_name2 = doc.add_paragraph()
         _spacing(p_name2, before=40, after=0)
-        _run(p_name2, personal.get("name", ""), bold=True, size=10.5)
+        _run(p_name2, personal.get("name", ""), bold=True, size=font_size)
 
         # Filename
         def _clean(s):

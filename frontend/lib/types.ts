@@ -1,4 +1,3 @@
-// ─── Shared types used across the app ────────────────────────────────────────
 
 export interface JdStructured {
   job_title: string

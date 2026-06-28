@@ -1,4 +1,3 @@
-// ─── API client — all calls to the FastAPI backend ───────────────────────────
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
@@ -6,7 +5,6 @@ export function apiUrl(path: string) {
   return `${BASE}${path}`
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildForm(data: Record<string, string | File | Blob>): FormData {
   const fd = new FormData()
@@ -25,7 +23,6 @@ async function post<T>(path: string, body: FormData): Promise<T> {
   return res.json()
 }
 
-// ── SSE streaming helper ──────────────────────────────────────────────────────
 // Calls onProgress for each progress line, resolves with the final "done" payload.
 
 export async function streamPost<T>(
@@ -75,7 +72,6 @@ export async function streamPost<T>(
   throw new Error("Stream ended without a done event")
 }
 
-// ── Typed API calls ───────────────────────────────────────────────────────────
 
 import type {
   AnalyseResponse, GenerateDoneEvent, CoverLetterResponse, MatchedPayload,
@@ -189,6 +185,8 @@ export async function generateCoverLetter(params: {
   resumeData: ResumeData
   matchedPayload: MatchedPayload
   selectedKeywords: string[]
+  fontSize: string
+  boldBody: boolean
   apiKey: string
 }): Promise<CoverLetterResponse> {
   return post("/api/cover-letter", buildForm({
@@ -198,6 +196,8 @@ export async function generateCoverLetter(params: {
     resume_data:        JSON.stringify(params.resumeData),
     matched_payload:    JSON.stringify(params.matchedPayload),
     selected_keywords:  JSON.stringify(params.selectedKeywords),
+    font_size:          params.fontSize,
+    bold_body:          params.boldBody ? "true" : "false",
     api_key:            params.apiKey,
   }))
 }
@@ -207,6 +207,8 @@ export async function editCoverLetter(params: {
   letterText: string
   jdStructured: JdStructured
   resumeData: ResumeData
+  fontSize: string
+  boldBody: boolean
   apiKey: string
 }): Promise<CoverLetterResponse> {
   return post("/api/edit-cover-letter", buildForm({
@@ -214,6 +216,8 @@ export async function editCoverLetter(params: {
     letter_text:       params.letterText,
     jd_structured:     JSON.stringify(params.jdStructured),
     resume_data:       JSON.stringify(params.resumeData),
+    font_size:         params.fontSize,
+    bold_body:         params.boldBody ? "true" : "false",
     api_key:           params.apiKey,
   }))
 }

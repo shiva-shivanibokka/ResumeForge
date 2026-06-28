@@ -22,7 +22,33 @@ HEADERS = {
         "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
 }
+
+# Sites that block server-side scraping and require login / JS rendering
+_BLOCKED_DOMAINS = {
+    "linkedin.com",
+    "indeed.com",
+    "glassdoor.com",
+    "ziprecruiter.com",
+    "monster.com",
+}
+
+
+def _is_blocked_domain(url: str) -> bool:
+    """Return True if the URL belongs to a site known to block scraping."""
+    from urllib.parse import urlparse
+
+    host = urlparse(url).netloc.lower().lstrip("www.")
+    return any(host == d or host.endswith("." + d) for d in _BLOCKED_DOMAINS)
+
 
 # Tags whose content we always discard
 NOISE_TAGS = {
@@ -88,21 +114,36 @@ def fetch_jd_text(url: str) -> dict:
     """
     result = {"success": False, "url": url, "text": "", "error": None}
 
-    # ── 1. HTTP GET ────────────────────────────────────────────────────────────
+    if _is_blocked_domain(url):
+        result["error"] = (
+            "This job board blocks automated access and requires login or JavaScript. "
+            "Please copy and paste the job description text directly into the text box instead."
+        )
+        return result
+
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
+        if resp.status_code in (401, 403, 999):
+            result["error"] = (
+                f"Access denied (HTTP {resp.status_code}). "
+                "The job board requires login or blocks automated access. "
+                "Please paste the job description text directly into the text box instead."
+            )
+            return result
         resp.raise_for_status()
     except requests.exceptions.Timeout:
         result["error"] = "Request timed out. The page took too long to respond."
         return result
     except requests.exceptions.HTTPError as e:
-        result["error"] = f"HTTP error: {e}"
+        result["error"] = (
+            f"HTTP error: {e}. "
+            "Try pasting the job description text directly into the text box instead."
+        )
         return result
     except requests.exceptions.RequestException as e:
         result["error"] = f"Could not reach URL: {e}"
         return result
 
-    # ── 2. Parse HTML ──────────────────────────────────────────────────────────
     soup = BeautifulSoup(resp.text, "html.parser")
 
     # Remove obviously noisy tags entirely
@@ -114,7 +155,6 @@ def fetch_jd_text(url: str) -> dict:
         if _is_noisy(tag):
             tag.decompose()
 
-    # ── 3. Extract text ────────────────────────────────────────────────────────
     # Try known content containers first (platform-specific)
     content_selectors = [
         # Greenhouse
@@ -154,7 +194,6 @@ def fetch_jd_text(url: str) -> dict:
             if len(text) > 200:
                 break
 
-    # ── 4. Clean text ──────────────────────────────────────────────────────────
     # Collapse excessive blank lines
     text = re.sub(r"\n{3,}", "\n\n", text)
     # Strip lines that are pure whitespace

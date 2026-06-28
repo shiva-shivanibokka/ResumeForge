@@ -39,7 +39,6 @@ from cover_letter import (
 )
 from project_matcher import rank_projects_for_jd
 
-# ── State ──────────────────────────────────────────────────────────────────────
 EMPTY_STATE = {
     "jd_structured": None,
     "jd_raw": "",
@@ -56,7 +55,6 @@ EMPTY_STATE = {
     "selected_keywords": [],
 }
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 
 def _get_client(api_key=""):
@@ -112,7 +110,6 @@ def _safe_float(v):
         return None
 
 
-# ── STEP 1: Analyse ────────────────────────────────────────────────────────────
 
 
 def step1_analyse(jd_url, jd_text_paste, resume_file, api_key, state):
@@ -233,7 +230,6 @@ def step1_analyse(jd_url, jd_text_paste, resume_file, api_key, state):
     )
 
 
-# ── STEP 2b: Fetch GitHub + Rank Top 10 Projects ─────────────────────────────
 
 
 def step2b_fetch_projects(github_url, linkedin_url, gh_token, api_key, state):
@@ -289,7 +285,7 @@ def step2b_fetch_projects(github_url, linkedin_url, gh_token, api_key, state):
     log(f"Analysing GitHub: {gh}")
     token = (gh_token or "").strip() or None
     gh_result = parse_github_profile(
-        gh, client, token=token, max_repos=30, progress_callback=log
+        gh, client, token=token, max_repos=100, progress_callback=log
     )
     if not gh_result["success"]:
         return _err(f"GitHub parsing failed: {gh_result['error']}")
@@ -322,7 +318,6 @@ def step2b_fetch_projects(github_url, linkedin_url, gh_token, api_key, state):
     )
 
 
-# ── STEP 3: Generate ──────────────────────────────────────────────────────────
 
 
 def step3_generate(
@@ -460,7 +455,6 @@ def step3_generate(
     )
 
 
-# ── EDIT ──────────────────────────────────────────────────────────────────────
 
 
 def run_edit(edit_instructions, page_option, api_key, body_font, state):
@@ -557,7 +551,6 @@ Return the complete updated JSON payload. Same structure. No markdown fences. No
     )
 
 
-# ── COVER LETTER ──────────────────────────────────────────────────────────────
 
 
 def run_cover_letter(tone, extra_instructions, api_key, state):
@@ -688,22 +681,18 @@ def run_cover_letter_edit(cl_edit_instructions, api_key, state):
     )
 
 
-# ── CSS ────────────────────────────────────────────────────────────────────────
 # Pill/bubble step headings, soft card borders, better spacing.
 # No hardcoded background colours — uses Gradio's CSS variables for dark-mode safety.
 
 CSS = """
-/* ── Global font + base ── */
 body, .gradio-container { font-size: 15px !important; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif !important; }
 
-/* ── App header ── */
 #rf-title {
     font-size: 2.6rem !important; font-weight: 900 !important;
     text-align: center; letter-spacing: -1px; margin-bottom: 0.2rem !important;
 }
 #rf-sub { text-align: center; font-size: 1.05rem; margin-bottom: 1.4rem; }
 
-/* ── Step pill headings — bubble style ── */
 .step-pill p, .step-pill {
     display: inline-block !important;
     padding: 0.4rem 1.3rem !important;
@@ -714,7 +703,6 @@ body, .gradio-container { font-size: 15px !important; font-family: 'Inter', 'Seg
     margin: 1.2rem 0 0.6rem !important; letter-spacing: 0.01em;
 }
 
-/* ── All input/select boxes — rounded, pop-out shadow ── */
 input, textarea, select,
 .block, .gr-box, .gr-form,
 .svelte-1p9xokt, [data-testid="textbox"] > label > div {
@@ -727,50 +715,37 @@ input:focus, textarea:focus, select:focus {
     outline: none !important;
 }
 
-/* ── Dropdown select boxes ── */
 select, .gr-dropdown select,
 ul.options { border-radius: 10px !important; }
 
-/* ── Buttons ── */
 button.primary { border-radius: 10px !important; font-weight: 700 !important; font-size: 1rem !important; letter-spacing: 0.02em; box-shadow: 0 3px 10px rgba(99,102,241,0.25) !important; }
 button.secondary { border-radius: 10px !important; font-weight: 600 !important; }
 button:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(99,102,241,0.3) !important; }
 
-/* ── Accordions ── */
 .accordion { border-radius: 12px !important; }
 
-/* ── Groups (card feel) ── */
 .gr-group, .gradio-group { border-radius: 14px !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important; }
 
-/* ── Labels ── */
 label > span:first-child { font-size: 0.93rem !important; font-weight: 700 !important; }
 .gr-info { font-size: 0.8rem !important; }
 
-/* ── Checkboxes ── */
 .gr-checkbox-group .gr-checkbox { border-radius: 6px !important; }
 
-/* ── Radio buttons ── */
 .gr-radio label { border-radius: 8px !important; padding: 0.35rem 0.7rem !important; }
 .gr-radio label:has(input:checked) { background: var(--color-accent-soft, rgba(99,102,241,0.12)) !important; }
 
-/* ── Tabs ── */
 .tab-nav button { font-size: 1rem !important; font-weight: 700 !important; border-radius: 8px 8px 0 0 !important; }
 
-/* ── Log area ── */
 #log-box textarea { font-family: 'Courier New', monospace !important; font-size: 0.8rem !important; border-radius: 10px !important; }
 
-/* ── File upload ── */
 .file-preview { border-radius: 10px !important; }
 
-/* ── Markdown headings ── */
 h1, h2, h3 { letter-spacing: -0.3px; }
 
-/* ── Dividers ── */
 hr { margin: 1rem 0 !important; }
 """
 
 
-# ── UI ─────────────────────────────────────────────────────────────────────────
 
 THEME = gr.themes.Soft(
     primary_hue="indigo",
@@ -787,9 +762,7 @@ with gr.Blocks(title="ResumeForge") as demo:
     gr.Markdown("AI-powered tailored resumes for any tech role", elem_id="rf-sub")
 
     with gr.Tabs(elem_classes=["tab-nav"]):
-        # ══════════════════════════════════════════════════════════════════════
         # TAB 1 — BUILD & PREVIEW
-        # ══════════════════════════════════════════════════════════════════════
         with gr.Tab("Build & Preview"):
             # Settings
             with gr.Accordion("⚙ API Keys & Settings", open=False):
@@ -806,7 +779,6 @@ with gr.Blocks(title="ResumeForge") as demo:
                         info="Read-only public repos. Raises API rate limit to 5,000/hr.",
                     )
 
-            # ── STEP 1 ────────────────────────────────────────────────────
             gr.Markdown(
                 "### Step 1 — Analyse Job Description & Resume",
                 elem_classes=["step-pill"],
@@ -861,7 +833,6 @@ with gr.Blocks(title="ResumeForge") as demo:
 
             gr.Markdown("---")
 
-            # ── STEP 2 — shown after Step 1 completes ─────────────────────────
             # IMPORTANT: gr.Column(visible=False) is used — NOT gr.Group.
             # gr.Group with visible=False breaks button event registration in Gradio 6.
             with gr.Column(visible=False) as step2_group:
@@ -903,7 +874,6 @@ with gr.Blocks(title="ResumeForge") as demo:
 
                 gr.Markdown("---")
 
-                # ── STEP 2b — Fetch & rank projects ───────────────────────────
                 gr.Markdown(
                     "### Step 2b — Fetch & Rank Projects", elem_classes=["step-pill"]
                 )
@@ -924,7 +894,6 @@ with gr.Blocks(title="ResumeForge") as demo:
 
                 gr.Markdown("---")
 
-                # ── STEP 3 ────────────────────────────────────────────────────
                 gr.Markdown("### Step 3 — Generate Resume", elem_classes=["step-pill"])
                 generate_btn = gr.Button(
                     "Generate Tailored Resume", variant="primary", size="lg"
@@ -1003,9 +972,7 @@ with gr.Blocks(title="ResumeForge") as demo:
                         cl_edit_btn = gr.Button("Apply Edits", variant="secondary")
                         cl_edit_status = gr.Markdown("")
 
-        # ══════════════════════════════════════════════════════════════════════
         # TAB 2 — LOGS
-        # ══════════════════════════════════════════════════════════════════════
         with gr.Tab("Logs"):
             gr.Markdown("Full pipeline activity log from the last run.")
             log_display = gr.Textbox(
@@ -1013,7 +980,6 @@ with gr.Blocks(title="ResumeForge") as demo:
             )
             clear_btn = gr.Button("Clear", size="sm")
 
-    # ── Wiring ─────────────────────────────────────────────────────────────────
 
     analyse_btn.click(
         fn=step1_analyse,

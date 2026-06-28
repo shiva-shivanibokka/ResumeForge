@@ -12,9 +12,7 @@ import io
 from pathlib import Path
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # TEXT EXTRACTION
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -86,9 +84,7 @@ def extract_raw_text(file_path: str, file_bytes: bytes = None) -> str:
             return ""
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # REGEX FIELD EXTRACTION  (fast, no API call needed)
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _find_email(text: str) -> str:
@@ -132,9 +128,7 @@ def _find_name(text: str) -> str:
     return ""
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # CLAUDE-POWERED STRUCTURED EXTRACTION
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def parse_resume_with_claude(raw_text: str, client) -> dict:
