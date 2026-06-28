@@ -1,0 +1,28 @@
+# Render Blueprint for the ResumeForge backend (free tier, Docker).
+# Deploy: push to GitHub, then in Render → New → Blueprint and point at this repo.
+# The frontend deploys separately to Cloudflare Pages / Vercel (see README).
+services:
+  - type: web
+    name: resumeforge-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: prod
+      # Set to your deployed frontend origin(s), comma-separated.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Optional server-side provider keys (users can also bring their own).
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
