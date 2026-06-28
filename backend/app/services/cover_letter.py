@@ -310,33 +310,12 @@ def build_cover_letter_docx(
         doc.save(str(path))
         result["docx_path"] = str(path)
 
-        # PDF conversion — run in subprocess to avoid COM conflicts with resume builder
-        pdf_path = out / f"{fn}.pdf"
+        # PDF conversion via LibreOffice headless (Linux-safe).
+        from app.services.pdf import docx_to_pdf
+
         try:
-            import time, subprocess, sys as _sys
-
-            time.sleep(1.0)
-            proc = subprocess.run(
-                [
-                    _sys.executable,
-                    "-c",
-                    f"from docx2pdf import convert; convert(r'{path}', r'{pdf_path}')",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            if proc.returncode == 0 and pdf_path.exists():
-                result["pdf_path"] = str(pdf_path)
-            else:
-                from docx2pdf import convert
-
-                convert(str(path), str(pdf_path))
-                if pdf_path.exists():
-                    result["pdf_path"] = str(pdf_path)
-                else:
-                    result["pdf_error"] = proc.stderr[:200]
-        except Exception as e:
+            result["pdf_path"] = docx_to_pdf(str(path), out_dir=str(out))
+        except RuntimeError as e:
             result["pdf_error"] = str(e)
 
     except Exception as e:

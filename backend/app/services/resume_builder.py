@@ -560,27 +560,21 @@ def _estimate_pages_docx(docx_path: str) -> float:
 
 def _count_pages_pdf(docx_path: str) -> int:
     """
-    Convert .docx to a temp PDF and count pages using pdfminer.
+    Convert .docx to a temp PDF (LibreOffice) and count pages.
     Only used for the final verification after binary search — not during search.
+    Returns 1 if conversion is unavailable, so layout logic degrades gracefully.
     """
-    import tempfile, os
+    import os
+    import tempfile
 
-    pdf_tmp = tempfile.mktemp(suffix=".pdf")
-    try:
-        from docx2pdf import convert
+    from app.services.pdf import count_pdf_pages, docx_to_pdf
 
-        convert(docx_path, pdf_tmp)
-        from pdfminer.pdfpage import PDFPage
-
-        with open(pdf_tmp, "rb") as f:
-            return sum(1 for _ in PDFPage.get_pages(f))
-    except Exception:
-        return 1
-    finally:
+    with tempfile.TemporaryDirectory(prefix="rf_pagecount_") as tmp:
         try:
-            os.remove(pdf_tmp)
-        except OSError:
-            pass
+            pdf = docx_to_pdf(docx_path, out_dir=tmp)
+            return count_pdf_pages(pdf)
+        except (RuntimeError, OSError):
+            return 1
 
 
 # Keep old name as alias (used by external code)
@@ -700,7 +694,7 @@ def build_resume(
         education:       from resume_parser
         matched_payload: from project_matcher.match_and_tailor()
         output_dir:      directory to save files; uses tempfile if None
-        to_pdf:          also convert to PDF via docx2pdf
+        to_pdf:          also convert to PDF via LibreOffice (app.services.pdf)
         one_page:        True = compress to fit 1 A4 page; False = comfortable 2-page layout
 
     Returns:
@@ -756,16 +750,12 @@ def build_resume(
         result["docx_path"] = str(docx_path)
 
         if to_pdf:
-            pdf_path = out / f"{filename_base}.pdf"
-            try:
-                from docx2pdf import convert
+            from app.services.pdf import docx_to_pdf
 
-                convert(str(docx_path), str(pdf_path))
-                if pdf_path.exists():
-                    result["pdf_path"] = str(pdf_path)
-                else:
-                    result["error"] = "PDF conversion produced no output file."
-            except Exception as e:
+            try:
+                pdf = docx_to_pdf(str(docx_path), out_dir=str(out))
+                result["pdf_path"] = pdf
+            except RuntimeError as e:
                 result["error"] = f"PDF conversion failed (docx saved OK): {e}"
 
     except Exception as e:
