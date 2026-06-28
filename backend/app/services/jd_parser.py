@@ -12,6 +12,7 @@ Works with: LinkedIn, Indeed, Greenhouse, Lever, Workday, Jobright,
 """
 
 import re
+
 import requests
 from bs4 import BeautifulSoup
 

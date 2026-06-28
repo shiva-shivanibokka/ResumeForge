@@ -11,17 +11,16 @@ Strategy per repo (in order of priority):
 Claude then synthesizes all signals into a structured project summary.
 """
 
+import base64
 import os
 import re
-import base64
-import requests
-from typing import Optional
 
+import requests
 
 # GITHUB API CLIENT
 
 
-def _github_headers(token: Optional[str] = None) -> dict:
+def _github_headers(token: str | None = None) -> dict:
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
@@ -33,7 +32,7 @@ def _github_headers(token: Optional[str] = None) -> dict:
     return headers
 
 
-def _get(url: str, token: Optional[str] = None) -> Optional[dict]:
+def _get(url: str, token: str | None = None) -> dict | None:
     """Make a GET request to GitHub API, return JSON or None on error."""
     try:
         resp = requests.get(url, headers=_github_headers(token), timeout=15)
@@ -45,8 +44,8 @@ def _get(url: str, token: Optional[str] = None) -> Optional[dict]:
 
 
 def _get_file_content(
-    owner: str, repo: str, path: str, token: Optional[str] = None
-) -> Optional[str]:
+    owner: str, repo: str, path: str, token: str | None = None
+) -> str | None:
     """Fetch a file from a GitHub repo and return its decoded text content."""
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
     data = _get(url, token)
@@ -58,7 +57,7 @@ def _get_file_content(
         return None
 
 
-def _get_readme(owner: str, repo: str, token: Optional[str] = None) -> str:
+def _get_readme(owner: str, repo: str, token: str | None = None) -> str:
     """Try common README filenames."""
     for name in ("README.md", "readme.md", "README.rst", "README.txt", "README"):
         content = _get_file_content(owner, repo, name, token)
@@ -67,7 +66,7 @@ def _get_readme(owner: str, repo: str, token: Optional[str] = None) -> str:
     return ""
 
 
-def _get_dep_file(owner: str, repo: str, token: Optional[str] = None) -> str:
+def _get_dep_file(owner: str, repo: str, token: str | None = None) -> str:
     """Try to find a dependency file to infer tech stack."""
     candidates = [
         "requirements.txt",
@@ -88,7 +87,7 @@ def _get_dep_file(owner: str, repo: str, token: Optional[str] = None) -> str:
     return ""
 
 
-def _get_top_files(owner: str, repo: str, token: Optional[str] = None) -> list:
+def _get_top_files(owner: str, repo: str, token: str | None = None) -> list:
     """List top-level files/folders in the repo."""
     url = f"https://api.github.com/repos/{owner}/{repo}/contents"
     data = _get(url, token)
@@ -100,7 +99,7 @@ def _get_top_files(owner: str, repo: str, token: Optional[str] = None) -> list:
 # PROFILE + REPO LISTING
 
 
-def parse_github_url(github_url: str) -> Optional[str]:
+def parse_github_url(github_url: str) -> str | None:
     """Extract username from a GitHub profile URL."""
     github_url = github_url.strip().rstrip("/")
     # Handle: https://github.com/username or github.com/username
@@ -114,7 +113,7 @@ def parse_github_url(github_url: str) -> Optional[str]:
 
 
 def get_user_repos(
-    username: str, token: Optional[str] = None, max_repos: int = 30
+    username: str, token: str | None = None, max_repos: int = 30
 ) -> list:
     """
     Fetch all public repos for a user, sorted by last updated.
@@ -152,7 +151,7 @@ def get_user_repos(
 
 
 def gather_repo_context(
-    owner: str, repo_meta: dict, token: Optional[str] = None
+    owner: str, repo_meta: dict, token: str | None = None
 ) -> dict:
     """
     Collect all available context for a single repo.
@@ -274,7 +273,7 @@ Return only the JSON object. No markdown fences. No explanation."""
 def parse_github_profile(
     github_url: str,
     llm,
-    token: Optional[str] = None,
+    token: str | None = None,
     max_repos: int = 100,
     progress_callback=None,
 ) -> dict:
@@ -333,8 +332,8 @@ def parse_github_profile(
 
     # 3. Gather context + summarize all repos concurrently
     # Parallelise with ThreadPoolExecutor — cuts ~3 min sequential → ~20 sec
-    from concurrent.futures import ThreadPoolExecutor, as_completed
     import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     # Thread-safe log
     log_lock = threading.Lock()

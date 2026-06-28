@@ -16,19 +16,17 @@ Layout options:
 Output filename: Firstname_Lastname_Company_JobTitle.docx / .pdf
 """
 
-import re
 import os
+import re
+from dataclasses import dataclass
 from pathlib import Path
-from datetime import datetime
-from dataclasses import dataclass, field
-from typing import Optional
 
 from docx import Document
-from docx.shared import Pt, RGBColor, Inches, Cm, Emu, Mm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches, Mm, Pt, RGBColor
 
 A4_WIDTH = Mm(210)
 A4_HEIGHT = Mm(297)
@@ -63,9 +61,9 @@ class FontConfig:
 
     # Sizes — (1-page value, 2-page value)
     # If user sets a custom size it overrides both; otherwise FS dict is used
-    name_size: Optional[float] = None  # default: 20 (1p) / 22 (2p)
-    heading_size: Optional[float] = None  # default: 9.5 (1p) / 10 (2p)
-    body_size: Optional[float] = None  # default: 8.5 (1p) / 9.5 (2p)
+    name_size: float | None = None  # default: 20 (1p) / 22 (2p)
+    heading_size: float | None = None  # default: 9.5 (1p) / 10 (2p)
+    body_size: float | None = None  # default: 8.5 (1p) / 9.5 (2p)
 
 
 DEFAULT_FONT = FontConfig()
@@ -564,7 +562,6 @@ def _count_pages_pdf(docx_path: str) -> int:
     Only used for the final verification after binary search — not during search.
     Returns 1 if conversion is unavailable, so layout logic degrades gracefully.
     """
-    import os
     import tempfile
 
     from app.services.pdf import count_pdf_pages, docx_to_pdf
@@ -614,7 +611,7 @@ def auto_fit_font_size(
       heading = body × 1.1
       body    = body (base)
     """
-    import tempfile, os
+    import tempfile
 
     def _make_fc(body: float) -> FontConfig:
         return FontConfig(

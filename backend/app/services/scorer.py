@@ -11,8 +11,8 @@ Scores a generated resume on two dimensions using Claude:
 Returns structured feedback so the UI can display score cards + actionable tips.
 """
 
-import re
 import json
+import re
 
 
 def quick_gap_analysis(jd_text: str, resume_raw_text: str, llm) -> dict:
@@ -442,8 +442,8 @@ def score_card_markdown(scores: dict) -> str:
     lines = [
         "### Resume Scores",
         "",
-        f"| | Score | Rating |",
-        f"|---|---|---|",
+        "| | Score | Rating |",
+        "|---|---|---|",
         f"| **ATS Score** | {label_emoji(ats)} **{ats} / 10** | {ats_lbl} |",
         f"| **JD Match Score** | {label_emoji(match)} **{match} / 10** | {match_lbl} |",
         "",

@@ -7,10 +7,9 @@ Returns a dict with:
   education (list), experience (list), skills (list), raw_text
 """
 
-import re
 import io
+import re
 from pathlib import Path
-
 
 # TEXT EXTRACTION
 
@@ -53,7 +52,6 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
     try:
         import docx
         from docx.oxml.ns import qn
-        from lxml import etree
 
         doc = docx.Document(io.BytesIO(file_bytes))
 

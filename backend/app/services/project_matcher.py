@@ -8,8 +8,8 @@ Uses Claude to:
   4. Light-touch rewrite of experience bullets
 """
 
-import re
 import json
+import re
 
 from app.llm import LLMError
 

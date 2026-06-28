@@ -12,18 +12,16 @@ Output: .docx file (same naming convention as resume)
 """
 
 import re
-import json
 import tempfile
 from pathlib import Path
 
-from app.llm import LLMError
 from docx import Document
-from docx.shared import Pt, Inches, Mm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Pt, RGBColor
 
-
+from app.llm import LLMError
 
 
 def generate_cover_letter_text(
@@ -162,7 +160,8 @@ def build_cover_letter_docx(
     """
     result = {"docx_path": None, "pdf_path": None, "error": None}
     try:
-        from docx.shared import Mm, Inches as _In
+        from docx.shared import Inches as _In
+        from docx.shared import Mm
 
         doc = Document()
 

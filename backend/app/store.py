@@ -14,8 +14,8 @@ import asyncio
 import threading
 import time as _time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 
 class FileStore:

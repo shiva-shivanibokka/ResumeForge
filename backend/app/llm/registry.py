@@ -12,7 +12,7 @@ model is verified against the claude-api reference (claude-opus-4-8).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
