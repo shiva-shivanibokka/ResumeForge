@@ -24,9 +24,9 @@ export function Stepper() {
             className={[
               "group flex flex-1 items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition lg:flex-none",
               active
-                ? "border-ember/50 bg-ember/10"
+                ? "border-violet/50 bg-violet/10 shadow-sm"
                 : open
-                  ? "border-steel bg-graphite hover:border-steel-2"
+                  ? "border-steel bg-graphite hover:border-violet/40"
                   : "border-transparent opacity-40",
             ].join(" ")}
           >

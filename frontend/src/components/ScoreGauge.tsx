@@ -17,7 +17,7 @@ export function ScoreGauge({ label, score }: { label: string; score: number }) {
         </span>
       </div>
       <div
-        className="relative h-3 overflow-hidden rounded-full border border-steel bg-[#0c0d10]"
+        className="relative h-3 overflow-hidden rounded-full border border-steel bg-graphite-2"
         role="meter"
         aria-valuenow={score}
         aria-valuemin={0}
@@ -31,7 +31,7 @@ export function ScoreGauge({ label, score }: { label: string; score: number }) {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
         />
         <motion.div
-          className="absolute top-1/2 h-4 w-[2px] -translate-y-1/2 bg-whitehot shadow-[0_0_8px_2px_rgba(255,244,230,0.7)]"
+          className="absolute top-1/2 h-4 w-[2px] -translate-y-1/2 bg-chalk shadow-[0_0_6px_1px_rgba(20,22,50,0.35)]"
           initial={{ left: 0, opacity: 0 }}
           animate={{ left: `calc(${pct}% - 1px)`, opacity: 1 }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}

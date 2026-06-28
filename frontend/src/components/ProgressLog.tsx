@@ -11,7 +11,7 @@ export function ProgressLog({ lines, live }: { lines: string[]; live: boolean })
   if (lines.length === 0 && !live) return null;
 
   return (
-    <div className="forge-log max-h-56 overflow-y-auto rounded-[10px] border border-steel bg-[#0b0c0f] p-3.5">
+    <div className="forge-log max-h-56 overflow-y-auto rounded-[10px] border border-steel bg-graphite-2 p-3.5">
       <AnimatePresence initial={false}>
         {lines.map((line, i) => (
           <motion.div

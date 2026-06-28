@@ -23,7 +23,7 @@ export function Projects() {
                   onClick={() => s.toggleKeyword(k.keyword)}
                   className={[
                     "rounded-full border px-3 py-1.5 text-xs transition",
-                    on ? "border-ember/60 bg-ember/15 text-amber" : "border-steel bg-graphite-2 text-ash-2 hover:border-steel-2",
+                    on ? "border-violet/60 bg-violet/10 font-medium text-violet" : "border-steel-2 bg-graphite-2 text-ash-2 hover:border-violet/50",
                   ].join(" ")}
                 >
                   {on ? "✓ " : "+ "}
@@ -66,10 +66,10 @@ export function Projects() {
                   onClick={() => s.toggleProject(p)}
                   className={[
                     "flex w-full items-start gap-3 rounded-[10px] border p-3.5 text-left transition",
-                    on ? "border-ember/50 bg-ember/[0.07]" : "border-steel bg-graphite-2 hover:border-steel-2",
+                    on ? "border-violet/50 bg-violet/[0.06]" : "border-steel-2 bg-graphite-2 hover:border-violet/40",
                   ].join(" ")}
                 >
-                  <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${on ? "border-ember bg-ember text-[#1a0c02]" : "border-steel-2 text-transparent"}`}>
+                  <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${on ? "border-violet bg-violet text-white" : "border-steel-2 text-transparent"}`}>
                     ✓
                   </span>
                   <span className="min-w-0">

@@ -79,9 +79,9 @@ export function Select({ className = "", children, ...rest }: SelectHTMLAttribut
 
 export function Badge({ children, tone = "steel" }: { children: ReactNode; tone?: "steel" | "ember" | "free" }) {
   const tones: Record<string, string> = {
-    steel: "border-steel bg-graphite-2 text-ash-2",
-    ember: "border-ember/40 bg-ember/10 text-amber",
-    free: "border-quench/40 bg-quench/10 text-quench",
+    steel: "border-steel-2 bg-graphite-2 text-ash-2",
+    ember: "border-ember/30 bg-ember/10 text-ember",
+    free: "border-teal/40 bg-teal/10 text-teal",
   };
   return (
     <span

@@ -37,7 +37,7 @@ export function Materials() {
               type="file"
               accept=".pdf,.docx"
               onChange={(e) => s.set("resumeFile", e.target.files?.[0] ?? null)}
-              className="field w-full cursor-pointer px-3 py-2.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-steel file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-chalk hover:file:bg-steel-2"
+              className="field w-full cursor-pointer px-3 py-2.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-violet/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-violet hover:file:bg-violet/20"
             />
             {s.resumeFile && <p className="mt-1.5 font-[var(--font-mono)] text-xs text-ash">{s.resumeFile.name}</p>}
           </div>

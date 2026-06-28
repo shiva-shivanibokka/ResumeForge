@@ -35,7 +35,7 @@ export function CoverLetter() {
         <>
           <Card>
             <SectionTitle title="Draft" hint="Read it through, then refine or download." />
-            <div className="whitespace-pre-wrap rounded-[10px] border border-steel bg-[#0b0c0f] p-4 text-sm leading-relaxed text-ash-2">
+            <div className="whitespace-pre-wrap rounded-[10px] border border-steel bg-graphite-2 p-4 text-sm leading-relaxed text-ash-2">
               {s.letterText}
             </div>
             <div className="mt-4 space-y-3">
