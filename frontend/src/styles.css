@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/* ── The Forge: design tokens ──────────────────────────────────────────────
+   Cooled-steel charcoal surfaces; a heat gradient (ember → amber → white-hot)
+   used functionally for progress and the score gauge, not as decoration. */
+@theme {
+  --color-forge: #0e0f12; /* background — cooled steel */
+  --color-graphite: #16181d; /* raised surfaces */
+  --color-graphite-2: #1d2027; /* hovered/elevated surfaces */
+  --color-steel: #2a2e37; /* borders, hammered steel */
+  --color-steel-2: #3a404c; /* stronger borders */
+  --color-ash: #8a8f99; /* muted text / labels */
+  --color-ash-2: #b9bec7; /* secondary text */
+  --color-chalk: #e9ecf1; /* primary text */
+  --color-ember: #ff6a1a; /* primary heat accent */
+  --color-amber: #ffb020; /* mid heat */
+  --color-whitehot: #fff4e6; /* peak heat */
+  --color-quench: #58c4dd; /* rare cool accent (cold end of the gauge) */
+
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-card: 14px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-steel);
+  }
+  html {
+    background: var(--color-forge);
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 520px at 78% -8%, rgba(255, 106, 26, 0.1), transparent 60%),
+      radial-gradient(900px 480px at 8% 4%, rgba(88, 196, 221, 0.05), transparent 55%),
+      var(--color-forge);
+    color: var(--color-chalk);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: rgba(255, 106, 26, 0.3);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-steel);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-steel-2);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ember);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Eyebrow / label — stamped-steel small caps in mono */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-ash);
+  }
+
+  .card {
+    background: linear-gradient(180deg, var(--color-graphite), #131519);
+    border: 1px solid var(--color-steel);
+    border-radius: var(--radius-card);
+  }
+
+  /* The heat gradient — the page's signature treatment */
+  .heat-gradient {
+    background: linear-gradient(
+      90deg,
+      var(--color-quench) 0%,
+      var(--color-ember) 45%,
+      var(--color-amber) 72%,
+      var(--color-whitehot) 100%
+    );
+  }
+  .heat-text {
+    background: linear-gradient(92deg, var(--color-ember), var(--color-amber) 55%, var(--color-whitehot));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Primary action — heated steel that glows on hover */
+  .btn-forge {
+    background: linear-gradient(180deg, var(--color-ember), #e2540c);
+    color: #1a0c02;
+    font-weight: 700;
+    box-shadow: 0 0 0 1px rgba(255, 176, 32, 0.35) inset;
+    transition:
+      box-shadow 0.18s ease,
+      transform 0.05s ease,
+      filter 0.18s ease;
+  }
+  .btn-forge:hover:not(:disabled) {
+    box-shadow:
+      0 0 0 1px rgba(255, 176, 32, 0.6) inset,
+      0 6px 28px -8px rgba(255, 106, 26, 0.7);
+    filter: brightness(1.06);
+  }
+  .btn-forge:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn-forge:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+  }
+
+  .btn-ghost {
+    background: var(--color-graphite-2);
+    border: 1px solid var(--color-steel);
+    color: var(--color-ash-2);
+    transition:
+      border-color 0.18s ease,
+      color 0.18s ease,
+      background 0.18s ease;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--color-ember);
+    color: var(--color-chalk);
+    background: var(--color-graphite);
+  }
+  .btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .field {
+    background: #0c0d10;
+    border: 1px solid var(--color-steel);
+    color: var(--color-chalk);
+    border-radius: 10px;
+    transition: border-color 0.16s ease;
+  }
+  .field::placeholder {
+    color: #5b606b;
+  }
+  .field:hover {
+    border-color: var(--color-steel-2);
+  }
+  .field:focus {
+    border-color: var(--color-ember);
+    outline: none;
+  }
+
+  /* Forge log — streamed progress lines */
+  .forge-log {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--color-ash-2);
+  }
+  .forge-log .spark {
+    color: var(--color-ember);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
