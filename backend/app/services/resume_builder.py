@@ -579,7 +579,7 @@ def _count_pages_pdf(docx_path: str) -> int:
     finally:
         try:
             os.remove(pdf_tmp)
-        except:
+        except OSError:
             pass
 
 
@@ -648,7 +648,7 @@ def auto_fit_font_size(
         finally:
             try:
                 os.remove(tmp)
-            except:
+            except OSError:
                 pass
 
     if not one_page:

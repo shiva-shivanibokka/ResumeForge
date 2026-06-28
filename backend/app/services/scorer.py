@@ -15,7 +15,7 @@ import re
 import json
 
 
-def quick_gap_analysis(jd_text: str, resume_raw_text: str, client) -> dict:
+def quick_gap_analysis(jd_text: str, resume_raw_text: str, llm) -> dict:
     """
     Fast pre-generation analysis: compare JD requirements vs resume content.
     Returns keyword gaps the user can choose to include before generating.
@@ -74,12 +74,7 @@ Rules:
 - Max 8 items each in required_missing and preferred_missing"""
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = next((b.text for b in response.content if hasattr(b, "text")), "").strip()
+        raw = llm.complete(prompt=prompt, max_tokens=1500).text
         raw = re.sub(r"^```[a-z]*\n?", "", raw)
         raw = re.sub(r"\n?```$", "", raw)
         result = json.loads(raw)
@@ -161,7 +156,7 @@ def _safe_list(value, default=None) -> list:
     return default if default is not None else []
 
 
-def score_resume(resume_text: str, jd_text: str, client) -> dict:
+def score_resume(resume_text: str, jd_text: str, llm) -> dict:
     """
     Score the resume against the job description on two dimensions:
       - ATS Score  (0-10): structural quality, parsability, formatting
@@ -170,7 +165,7 @@ def score_resume(resume_text: str, jd_text: str, client) -> dict:
     Args:
         resume_text: plain text extracted from the generated resume
         jd_text:     raw job description text
-        client:      Anthropic client
+        llm:         LLM provider
 
     Returns:
         {
@@ -318,18 +313,7 @@ Rules:
 - keyword_match_rate of {keyword_match_rate_pct}% should strongly inform ats_score"""
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1800,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        # Safely extract text from the first TextBlock in the response
-        raw = ""
-        for block in response.content:
-            if hasattr(block, "text"):
-                raw = block.text.strip()
-                break
+        raw = llm.complete(prompt=prompt, max_tokens=1800).text
 
         if not raw:
             raise ValueError("Empty response from model")
@@ -487,44 +471,3 @@ def score_card_markdown(scores: dict) -> str:
         lines.append(f"❌ **Keywords missing:** {', '.join(missing[:10])}")
 
     return "\n".join(lines)
-
-
-# Keep old name as alias so existing imports don't break
-def score_card_html(scores: dict) -> str:
-    return score_card_markdown(scores)
-
-    ats_ring = ring(scores["ats_score"], scores["ats_label"], "ATS Score")
-    match_ring = ring(scores["match_score"], scores["match_label"], "JD Match Score")
-
-    def tips(items, icon="💡"):
-        if not items:
-            return ""
-        lis = "".join(f"<li style='margin:4px 0'>{icon} {t}</li>" for t in items[:3])
-        return f"<ul style='margin:6px 0 0;padding-left:1.2rem;font-size:0.88rem;color:#444'>{lis}</ul>"
-
-    matched = ", ".join(scores.get("matched_keywords", [])[:12])
-    missing = ", ".join(scores.get("missing_keywords", [])[:8])
-
-    kw_section = ""
-    if matched or missing:
-        kw_section = f"""
-        <div style="margin-top:12px;font-size:0.85rem">
-          {"<div style='margin-bottom:4px'><span style='color:#1A7A3F;font-weight:700'>✓ Keywords matched:</span> " + matched + "</div>" if matched else ""}
-          {"<div><span style='color:#C0392B;font-weight:700'>✗ Keywords missing:</span> " + missing + "</div>" if missing else ""}
-        </div>"""
-
-    return f"""
-    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:1.2rem 1.4rem;margin-top:1rem">
-      <div style="font-size:1rem;font-weight:700;color:#1A2E4A;margin-bottom:1rem">Resume Scores</div>
-      <div style="display:flex;gap:2rem;flex-wrap:wrap;justify-content:flex-start;align-items:flex-start">
-        {ats_ring}
-        {match_ring}
-        <div style="flex:3;min-width:220px">
-          <div style="font-size:0.85rem;font-weight:700;color:#555;margin-bottom:2px">ATS Tips</div>
-          {tips(scores.get("ats_feedback", []), "✦")}
-          <div style="font-size:0.85rem;font-weight:700;color:#555;margin-top:10px;margin-bottom:2px">Match Tips</div>
-          {tips(scores.get("match_feedback", []), "✦")}
-          {kw_section}
-        </div>
-      </div>
-    </div>"""

@@ -178,7 +178,7 @@ def _find_name(text: str) -> str:
 # CLAUDE-POWERED STRUCTURED EXTRACTION
 
 
-def parse_resume_with_claude(raw_text: str, client) -> dict:
+def parse_resume_with_claude(raw_text: str, llm) -> dict:
     """
     Use Claude to extract fully structured data from resume text.
     Falls back to regex for contact info if Claude fails.
@@ -223,12 +223,7 @@ RESUME TEXT:
 {raw_text[:8000]}"""
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=3000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = next((b.text for b in response.content if hasattr(b, "text")), "").strip()
+        raw = llm.complete(prompt=prompt, max_tokens=3000).text
         raw = re.sub(r"^```[a-z]*\n?", "", raw)
         raw = re.sub(r"\n?```$", "", raw)
         parsed = json.loads(raw)
@@ -271,7 +266,7 @@ RESUME TEXT:
     return parsed
 
 
-def parse_resume(file_path: str, client, file_bytes: bytes = None) -> dict:
+def parse_resume(file_path: str, llm, file_bytes: bytes = None) -> dict:
     """
     Full pipeline: extract text → parse with Claude → return structured dict.
     """
@@ -291,4 +286,4 @@ def parse_resume(file_path: str, client, file_bytes: bytes = None) -> dict:
             "raw_text": raw_text,
             "error": raw_text,
         }
-    return parse_resume_with_claude(raw_text, client)
+    return parse_resume_with_claude(raw_text, llm)

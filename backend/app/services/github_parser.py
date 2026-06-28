@@ -181,7 +181,7 @@ def gather_repo_context(
 # CLAUDE-POWERED PROJECT SUMMARIZATION
 
 
-def summarize_repo_with_claude(repo_context: dict, client) -> dict:
+def summarize_repo_with_claude(repo_context: dict, llm) -> dict:
     """
     Ask Claude to produce a structured project summary from all gathered context.
     Returns a dict suitable for use in resume generation.
@@ -247,12 +247,7 @@ If this is a toy project, tutorial copy, or has no meaningful content, set is_re
 Return only the JSON object. No markdown fences. No explanation."""
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = next((b.text for b in response.content if hasattr(b, "text")), "").strip()
+        raw = llm.complete(prompt=prompt, max_tokens=1500).text
         raw = re.sub(r"^```[a-z]*\n?", "", raw)
         raw = re.sub(r"\n?```$", "", raw)
         return json.loads(raw)
@@ -278,7 +273,7 @@ Return only the JSON object. No markdown fences. No explanation."""
 
 def parse_github_profile(
     github_url: str,
-    client,
+    llm,
     token: Optional[str] = None,
     max_repos: int = 100,
     progress_callback=None,
@@ -288,7 +283,7 @@ def parse_github_profile(
 
     Args:
         github_url: GitHub profile URL or username
-        client: Anthropic client instance
+        llm: LLM provider instance
         token: GitHub personal access token (optional but recommended)
         max_repos: max repos to process
         progress_callback: optional function(message: str) for UI progress updates
@@ -347,7 +342,7 @@ def parse_github_profile(
 
     def process_repo(repo_meta):
         context = gather_repo_context(username, repo_meta, token)
-        summary = summarize_repo_with_claude(context, client)
+        summary = summarize_repo_with_claude(context, llm)
         summary["github_url"] = repo_meta["html_url"]
         summary["repo_name"] = repo_meta["name"]
         with log_lock:

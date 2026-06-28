@@ -11,11 +11,13 @@ Uses Claude to:
 import re
 import json
 
+from app.llm import LLMError
+
 
 def rank_projects_for_jd(
     jd_structured: dict,
     all_projects: list,
-    client,
+    llm,
     top_n: int = 10,
 ) -> list:
     """
@@ -79,26 +81,22 @@ Return ONLY a JSON array of exactly {top_n} objects (no markdown, no explanation
 Ordered from most to least relevant."""
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = next((b.text for b in response.content if hasattr(b, "text")), "")
-        raw = raw.strip()
+        raw = llm.complete(prompt=prompt, max_tokens=1000).text
         raw = re.sub(r"^```[a-z]*\n?", "", raw)
         raw = re.sub(r"\n?```$", "", raw)
         ranked_refs = json.loads(raw)
 
         result = []
         for ref in ranked_refs[:top_n]:
-            idx = ref.get("index", 0)
+            idx = ref.get("index")
+            if idx is None:
+                continue  # skip malformed refs instead of defaulting to project 0
             if 0 <= idx < len(candidates):
                 proj = dict(candidates[idx])
                 proj["relevance_reason"] = ref.get("relevance_reason", "")
                 result.append(proj)
         return result
-    except Exception:
+    except (LLMError, ValueError, KeyError, json.JSONDecodeError):
         # Fallback: return top-scored projects unchanged
         return candidates[:top_n]
 
@@ -174,8 +172,9 @@ def _score_project(project: dict) -> int:
     elif cat == "other":
         score -= 10
 
-    # Reward stars
-    score += project.get("stars", 0) * 2
+    # Reward stars, but cap the contribution so a single popular repo can't
+    # swamp the category/deployment signals (was unbounded `stars * 2`).
+    score += min(project.get("stars", 0), 50) * 2
 
     return score
 
@@ -184,7 +183,7 @@ def match_and_tailor(
     jd_structured: dict,
     resume_data: dict,
     confirmed_projects: list,
-    client,
+    llm,
     num_projects: int = 4,
     bullets_per_project: int = 3,
 ) -> dict:
@@ -195,7 +194,7 @@ def match_and_tailor(
         jd_structured:      output from jd_parser.extract_jd_structured()
         resume_data:        output from resume_parser.parse_resume()
         confirmed_projects: list of project dicts the user confirmed (from github_parser)
-        client:             Anthropic client
+        llm:                LLMProvider (see app.llm)
         num_projects:       how many projects to select (default 4)
         bullets_per_project: exactly how many bullets per project (default 3)
 
@@ -294,27 +293,17 @@ Return a JSON object with EXACTLY this structure:
 Return ONLY the JSON. No markdown fences. No explanation."""
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = next((b.text for b in response.content if hasattr(b, "text")), "")
-        raw = raw.strip()
+        raw = llm.complete(prompt=prompt, max_tokens=4000).text
         raw = re.sub(r"^```[a-z]*\n?", "", raw)
         raw = re.sub(r"\n?```$", "", raw)
         result = json.loads(raw)
 
-        # Enforce bullet count
+        # Enforce bullet count: trim extras, but never pad by duplicating the
+        # last bullet (that produced repeated bullets on the resume).
         for proj in result.get("selected_projects", []):
             bullets = proj.get("bullets", [])
             if len(bullets) > bullets_per_project:
                 proj["bullets"] = bullets[:bullets_per_project]
-            elif len(bullets) < bullets_per_project:
-                while len(proj["bullets"]) < bullets_per_project:
-                    proj["bullets"].append(
-                        bullets[-1] if bullets else "Developed core functionality."
-                    )
 
         return result
 

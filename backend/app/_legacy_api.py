@@ -30,7 +30,8 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import anthropic
+
+from app.llm import get_provider, LLMError
 
 load_dotenv(override=True)
 
@@ -73,14 +74,15 @@ def _register_file(path: str) -> str:
     return file_id
 
 
-def _get_client(api_key: str = "") -> anthropic.Anthropic:
-    key = (api_key or "").strip() or os.getenv("ANTHROPIC_API_KEY", "")
-    if not key:
-        raise HTTPException(
-            status_code=401,
-            detail="Anthropic API key not found. Set ANTHROPIC_API_KEY in .env.",
-        )
-    return anthropic.Anthropic(api_key=key)
+def _get_client(api_key: str = ""):
+    """Legacy shim: returns an LLMProvider (Anthropic) for the old endpoints.
+
+    Superseded by per-route provider selection in app/routers (Phase 4).
+    """
+    try:
+        return get_provider("anthropic", api_key=api_key)
+    except LLMError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
 
 
 def _https(url: str) -> str:
@@ -446,21 +448,11 @@ EDIT INSTRUCTIONS:
 Return the complete updated JSON payload. Same structure. No markdown fences. No explanation."""
 
     try:
-        resp = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        # Safely get text from the first TextBlock — other block types have no .text
-        raw = ""
-        for block in resp.content:
-            if hasattr(block, "text"):
-                raw = block.text.strip()
-                break
+        raw = client.complete(prompt=prompt, max_tokens=4000).text
         raw = _re.sub(r"^```[a-z]*\n?", "", raw)
         raw = _re.sub(r"\n?```$", "", raw)
         updated = json.loads(raw)
-    except Exception as e:
+    except Exception:
         updated = matched
 
     fc = FontConfig(

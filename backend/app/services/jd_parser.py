@@ -15,6 +15,8 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+from app.llm import LLMError
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -46,7 +48,7 @@ def _is_blocked_domain(url: str) -> bool:
     """Return True if the URL belongs to a site known to block scraping."""
     from urllib.parse import urlparse
 
-    host = urlparse(url).netloc.lower().lstrip("www.")
+    host = urlparse(url).netloc.lower().removeprefix("www.")
     return any(host == d or host.endswith("." + d) for d in _BLOCKED_DOMAINS)
 
 
@@ -215,7 +217,7 @@ def fetch_jd_text(url: str) -> dict:
     return result
 
 
-def extract_jd_structured(jd_text: str, client) -> dict:
+def extract_jd_structured(jd_text: str, llm) -> dict:
     """
     Use Claude to extract structured data from raw JD text.
 
@@ -243,15 +245,13 @@ Only return the JSON object, no markdown fences, no explanation.
 JOB DESCRIPTION:
 {jd_text}"""
 
-    response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        raw = llm.complete(prompt=prompt, max_tokens=2000).text
+    except LLMError as e:
+        raise RuntimeError(f"JD structured extraction failed: {e}") from e
 
     import json
 
-    raw = next((b.text for b in response.content if hasattr(b, "text")), "").strip()
     # Strip markdown fences if Claude added them despite instructions
     raw = re.sub(r"^```[a-z]*\n?", "", raw)
     raw = re.sub(r"\n?```$", "", raw)

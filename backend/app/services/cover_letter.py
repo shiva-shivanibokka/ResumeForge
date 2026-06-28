@@ -15,6 +15,8 @@ import re
 import json
 import tempfile
 from pathlib import Path
+
+from app.llm import LLMError
 from docx import Document
 from docx.shared import Pt, Inches, Mm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -30,7 +32,7 @@ def generate_cover_letter_text(
     matched_payload: dict,
     selected_keywords: list,
     tone: str,
-    client,
+    llm,
     extra_instructions: str = "",
 ) -> str:
     """
@@ -47,7 +49,7 @@ def generate_cover_letter_text(
     # Include project names, tech stack AND key bullet points for richer context
     proj_lines = []
     for p in selected_projects[:4]:
-        proj_lines.append(f"- {p['name']} ({', '.join(p.get('tech_stack', [])[:5])})")
+        proj_lines.append(f"- {p.get('name', '')} ({', '.join(p.get('tech_stack', [])[:5])})")
         for b in p.get("bullets", [])[:2]:  # top 2 bullets per project
             proj_lines.append(f"    • {b}")
     proj_summary = "\n".join(proj_lines)
@@ -101,14 +103,10 @@ Keywords to emphasise: {keyword_str}
 Return ONLY the cover letter body text — salutation through closing paragraph.
 No subject line. No date. No sign-off. No name at the end."""
 
-    response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=1200,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return next((b.text for b in response.content if hasattr(b, "text")), "").strip()
-
-
+    try:
+        return llm.complete(prompt=prompt, max_tokens=1200).text
+    except LLMError as e:
+        raise RuntimeError(f"Cover letter generation failed: {e}") from e
 
 
 def _spacing(para, before=0, after=0):
@@ -352,7 +350,7 @@ def revise_cover_letter(
     edit_instructions: str,
     jd_structured: dict,
     resume_data: dict,
-    client,
+    llm,
 ) -> str:
     """Apply edit instructions to an existing cover letter text."""
     prompt = f"""You are a professional cover letter editor.
@@ -366,9 +364,7 @@ EDIT INSTRUCTIONS:
 
 Return the complete updated cover letter text. No explanation, no markdown. Just the letter."""
 
-    response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=1200,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return next((b.text for b in response.content if hasattr(b, "text")), "").strip()
+    try:
+        return llm.complete(prompt=prompt, max_tokens=1200).text
+    except LLMError as e:
+        raise RuntimeError(f"Cover letter revision failed: {e}") from e
