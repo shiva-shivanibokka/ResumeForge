@@ -251,7 +251,9 @@ def match_and_tailor(
 ### SKILLS SECTION
 - Include EVERY skill from the candidate's existing resume skills — do NOT drop any of them
 - ALSO include the JD's required/preferred keywords that appear in required_skills/keywords above
-- Organize everything into 4-6 clear categories; order JD-relevant skills first within each
+- Organize into 4-6 clear, meaningful categories; order JD-relevant skills first within each
+- List each skill ONCE — never repeat a skill across categories
+- Do NOT create a vague catch-all category like "Other" or "Additional Skills"
 - Do NOT invent skills with no basis in the candidate's background
 
 ### EXPERIENCE BULLETS

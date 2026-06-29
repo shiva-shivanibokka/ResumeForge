@@ -70,32 +70,47 @@ def _flatten_skills(skills) -> list[str]:
     return [s for s in out if s]
 
 
-def _augment_skills(matched: dict, resume_dict: dict, selected_keywords: list) -> None:
-    """Guarantee the resume keeps EVERY existing skill plus the selected keywords.
-
-    The LLM is asked to preserve skills, but it sometimes drops them — this is the
-    safety net so the skills section is additive, never lossy.
+def merge_skills(tailored, extra: list[str] | None = None) -> dict:
+    """Clean the skills section: drop duplicates across categories (case-insensitive,
+    first occurrence wins, category order preserved) and append any `extra` skills not
+    already present to the LAST category — no junk 'Additional/Other' catch-all heading.
     """
-    tailored = matched.get("tailored_skills")
     if not isinstance(tailored, dict):
         tailored = {}
+    seen: set[str] = set()
+    cleaned: dict[str, str] = {}
+    for cat, val in tailored.items():
+        items = []
+        for s in _flatten_skills(val):
+            k = s.lower()
+            if k not in seen:
+                seen.add(k)
+                items.append(s)
+        if items:
+            cleaned[cat] = ", ".join(items)
 
-    present = {s.lower() for v in tailored.values() for s in _flatten_skills(v)}
-    desired = _flatten_skills(resume_dict.get("skills")) + [
-        k for k in (selected_keywords or []) if isinstance(k, str)
-    ]
+    leftovers = []
+    for s in extra or []:
+        if isinstance(s, str) and s.strip() and s.strip().lower() not in seen:
+            seen.add(s.strip().lower())
+            leftovers.append(s.strip())
+    if leftovers:
+        if cleaned:
+            last = next(reversed(cleaned))
+            cleaned[last] = cleaned[last] + ", " + ", ".join(leftovers)
+        else:
+            cleaned["Skills"] = ", ".join(leftovers)
+    return cleaned
 
-    missing, seen = [], set()
-    for s in desired:
-        key = s.lower()
-        if key and key not in present and key not in seen:
-            missing.append(s)
-            seen.add(key)
 
-    if missing:
-        existing = _flatten_skills(tailored.get("Additional Skills"))
-        tailored["Additional Skills"] = ", ".join(existing + missing)
-    matched["tailored_skills"] = tailored
+def _augment_skills(matched: dict, resume_dict: dict, selected_keywords: list) -> None:
+    """Dedupe the LLM's skills and fold in the user's explicitly selected keywords.
+    Relies on the prompt to keep the candidate's existing skills (it's told to), but
+    guarantees a clean, non-redundant section without a catch-all heading."""
+    matched["tailored_skills"] = merge_skills(
+        matched.get("tailored_skills"),
+        [k for k in (selected_keywords or []) if isinstance(k, str)],
+    )
 
 
 @router.post("/generate")
@@ -256,12 +271,18 @@ async def rebuild_resume(
     page_option: str = Form("1-page"),
     font_family: str = Form("Calibri"),
     font_size: str = Form("auto"),
+    add_keywords: str = Form("[]"),  # JSON list of skills to insert before rebuilding
 ):
-    """Re-render the resume with a new font/size/length — NO LLM call. Used by the
-    'Apply format' button so layout tweaks are instant and don't cost a model call.
-    Content (and therefore the score) is unchanged."""
+    """Re-render the resume with a new font/size/length and/or freshly inserted
+    skills — NO LLM call. Used by 'Apply format' and the click-to-add missing
+    keywords, so layout/skill tweaks are instant and don't cost a model call.
+    Returns the (possibly updated) matched_payload so the client stays in sync."""
     matched = json.loads(matched_payload)
     resume_dict = json.loads(resume_data)
+    extra = [k for k in json.loads(add_keywords or "[]") if isinstance(k, str)]
+    if extra:
+        matched["tailored_skills"] = merge_skills(matched.get("tailored_skills"), extra)
+
     one_page = page_option != "2-page"
     fc, auto = _resume_font(font_family, font_size, one_page)
     result = build_resume(
@@ -273,6 +294,7 @@ async def rebuild_resume(
     pdf_path = result.get("pdf_path")
     store = get_store()
     return {
+        "matched_payload": matched,
         "docx_id": store.register(docx_path) if docx_path else None,
         "pdf_id": store.register(pdf_path) if pdf_path else None,
         "docx_name": Path(docx_path).name if docx_path else None,

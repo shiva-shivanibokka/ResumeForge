@@ -34,6 +34,9 @@ function ScoreBlock({
 export function Forge() {
   const s = useStore();
   const [edit, setEdit] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const togglePick = (k: string) =>
+    setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
   const generating = s.busy === "generate";
   const editing = s.busy === "editResume";
   const reformatting = s.busy === "reformat";
@@ -74,20 +77,37 @@ export function Forge() {
               <ScoreBlock label="JD match" score={Number(s.scores.match_score ?? 0)} feedback={s.scores.match_feedback} />
               {missing.length > 0 && (
                 <div className="mt-3">
-                  <div className="eyebrow mb-1.5">Still missing from the JD — click to add</div>
+                  <div className="eyebrow mb-1.5">Still missing from the JD — select, then add</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {missing.slice(0, 12).map((k) => (
-                      <button
-                        key={k}
-                        onClick={() => s.insertKeyword(k)}
-                        disabled={reformatting}
-                        title="Add this skill to your resume"
-                        className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-[0.7rem] text-amber transition hover:bg-amber/20 disabled:opacity-50"
-                      >
-                        + {k}
-                      </button>
-                    ))}
+                    {missing.slice(0, 12).map((k) => {
+                      const on = picked.includes(k);
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => togglePick(k)}
+                          disabled={reformatting}
+                          aria-pressed={on}
+                          className={[
+                            "rounded-full border px-2 py-0.5 text-[0.7rem] transition disabled:opacity-50",
+                            on
+                              ? "border-amber bg-amber/30 text-chalk"
+                              : "border-amber/40 bg-amber/10 text-amber hover:bg-amber/20",
+                          ].join(" ")}
+                        >
+                          {on ? "✓" : "+"} {k}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {picked.length > 0 && (
+                    <Button
+                      className="mt-2.5"
+                      onClick={() => s.insertKeywords(picked).then(() => setPicked([]))}
+                      disabled={reformatting}
+                    >
+                      {reformatting ? <Spinner /> : "＋"} Add {picked.length} skill{picked.length > 1 ? "s" : ""} to resume
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

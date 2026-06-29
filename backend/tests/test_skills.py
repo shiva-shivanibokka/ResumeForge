@@ -1,4 +1,4 @@
-from app.routers.generate import _augment_skills, _flatten_skills, _resume_font
+from app.routers.generate import _augment_skills, _flatten_skills, _resume_font, merge_skills
 
 
 def test_resume_font_auto_enables_autofit():
@@ -25,27 +25,38 @@ def test_flatten_handles_list_dict_and_string():
     assert _flatten_skills({"Lang": "python, go", "Cloud": ["aws"]}) == ["python", "go", "aws"]
 
 
-def test_augment_keeps_all_existing_skills_and_selected_keywords():
-    # LLM dropped most skills; safety net must restore them + add selected keywords.
-    matched = {"tailored_skills": {"Languages": "Python"}}
-    resume = {"skills": ["Python", "SQL", "Docker", "React"]}
-    _augment_skills(matched, resume, selected_keywords=["Kubernetes"])
-    present = {s.lower() for v in matched["tailored_skills"].values() for s in _flatten_skills(v)}
-    for expected in ("python", "sql", "docker", "react", "kubernetes"):
-        assert expected in present
+def _flat_lower(skills: dict) -> list[str]:
+    return [s.lower() for v in skills.values() for s in _flatten_skills(v)]
 
 
-def test_augment_is_case_insensitive_no_duplicates():
-    matched = {"tailored_skills": {"Languages": "python"}}
-    resume = {"skills": ["Python"]}  # already present (different case)
-    _augment_skills(matched, resume, selected_keywords=[])
-    # "python" should not be duplicated into Additional Skills
+def test_merge_dedupes_across_categories():
+    out = merge_skills({"Lang": "Python, SQL", "More": "python, Go"})
+    flat = _flat_lower(out)
+    assert flat.count("python") == 1
+    assert "go" in flat and "sql" in flat
+
+
+def test_merge_appends_extra_to_last_category_no_catchall():
+    out = merge_skills({"Languages": "Python", "Cloud": "AWS"}, ["Kubernetes"])
+    assert "Additional Skills" not in out and "Other" not in out
+    assert "kubernetes" in out["Cloud"].lower()  # folded into the last category
+
+
+def test_merge_skips_already_present_extra():
+    out = merge_skills({"Languages": "Python"}, ["python"])
+    assert _flat_lower(out).count("python") == 1
+
+
+def test_merge_empty_creates_single_skills_category():
+    out = merge_skills({}, ["Go", "Rust"])
+    assert list(out.keys()) == ["Skills"]
+    assert {"go", "rust"} <= set(_flat_lower(out))
+
+
+def test_augment_adds_selected_keywords_and_dedupes():
+    matched = {"tailored_skills": {"Languages": "Python, python", "Cloud": "AWS"}}
+    _augment_skills(matched, {"skills": ["Python", "SQL"]}, selected_keywords=["Kubernetes"])
+    flat = _flat_lower(matched["tailored_skills"])
+    assert flat.count("python") == 1  # deduped
+    assert "kubernetes" in flat  # selected keyword added
     assert "Additional Skills" not in matched["tailored_skills"]
-
-
-def test_augment_with_empty_tailored_uses_all_originals():
-    matched = {"tailored_skills": {}}
-    resume = {"skills": ["Go", "Rust"]}
-    _augment_skills(matched, resume, selected_keywords=[])
-    present = {s.lower() for v in matched["tailored_skills"].values() for s in _flatten_skills(v)}
-    assert {"go", "rust"} <= present

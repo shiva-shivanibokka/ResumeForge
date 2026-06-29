@@ -84,7 +84,7 @@ interface State {
   generate: () => Promise<void>;
   editResume: (instructions: string) => Promise<void>;
   reformatResume: () => Promise<void>;
-  insertKeyword: (keyword: string) => Promise<void>;
+  insertKeywords: (keywords: string[]) => Promise<void>;
   generateCover: () => Promise<void>;
   editCover: (instructions: string) => Promise<void>;
   cancel: () => void;
@@ -350,41 +350,31 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
-  // Add a still-missing JD keyword into the resume's skills, then re-render (no LLM).
-  insertKeyword: async (keyword) => {
+  // Insert one or more selected missing keywords into the resume's skills and
+  // re-render once (no LLM). The backend dedupes + places them cleanly and returns
+  // the updated payload so we stay in sync.
+  insertKeywords: async (keywords) => {
     const s = get();
-    if (!s.matchedPayload || !s.analysis) return;
-    const payload = JSON.parse(JSON.stringify(s.matchedPayload)) as Record<string, unknown>;
-    const skills = (payload.tailored_skills as Record<string, unknown>) ?? {};
-    const present = new Set(
-      Object.values(skills).flatMap((v) =>
-        String(v)
-          .split(",")
-          .map((x) => x.trim().toLowerCase()),
-      ),
-    );
-    if (!present.has(keyword.toLowerCase())) {
-      const cur = skills["Additional Skills"] ? String(skills["Additional Skills"]) : "";
-      skills["Additional Skills"] = cur ? `${cur}, ${keyword}` : keyword;
-      payload.tailored_skills = skills;
-    }
-    const missing = (s.scores?.missing_keywords ?? []).filter((k) => k !== keyword);
-    const matched = [...(s.scores?.matched_keywords ?? []), keyword];
-    set({
-      matchedPayload: payload,
-      scores: s.scores ? { ...s.scores, missing_keywords: missing, matched_keywords: matched } : s.scores,
-      busy: "reformat",
-      error: null,
-    });
+    if (!s.matchedPayload || !s.analysis || keywords.length === 0) return;
+    set({ busy: "reformat", error: null });
     try {
       const form = new FormData();
-      form.set("matched_payload", JSON.stringify(payload));
+      form.set("matched_payload", JSON.stringify(s.matchedPayload));
       form.set("resume_data", JSON.stringify(s.analysis.resume_data));
       form.set("page_option", s.pageOption);
       form.set("font_family", s.fontFamily);
       form.set("font_size", s.fontSize);
+      form.set("add_keywords", JSON.stringify(keywords));
       const d = await post<GenerateDone>("/api/rebuild-resume", form);
-      set({ resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name } });
+      const added = new Set(keywords.map((k) => k.toLowerCase()));
+      const cur = get();
+      const missing = (cur.scores?.missing_keywords ?? []).filter((k) => !added.has(k.toLowerCase()));
+      const matched = [...(cur.scores?.matched_keywords ?? []), ...keywords];
+      set({
+        matchedPayload: d.matched_payload ?? cur.matchedPayload,
+        resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name },
+        scores: cur.scores ? { ...cur.scores, missing_keywords: missing, matched_keywords: matched } : cur.scores,
+      });
     } catch (e) {
       set({ error: msg(e) });
     } finally {

@@ -527,6 +527,18 @@ HEADING_RATIO = 1.1  # section heading = body × 1.1
 # tech stack = body × 0.88
 
 
+def _fc_from_body(family: str, body: float) -> FontConfig:
+    """Build a FontConfig at a given body size, keeping the typographic ratios."""
+    return FontConfig(
+        name_font=family,
+        heading_font=family,
+        body_font=family,
+        name_size=round(body * NAME_RATIO, 1),
+        heading_size=round(body * HEADING_RATIO, 1),
+        body_size=body,
+    )
+
+
 def _estimate_pages_docx(docx_path: str) -> float:
     """
     Estimate the number of pages by summing paragraph heights from the .docx XML.
@@ -778,13 +790,41 @@ def build_resume(
         result["docx_path"] = str(docx_path)
 
         if to_pdf:
-            from app.services.pdf import docx_to_pdf
+            from app.services.pdf import count_pdf_pages, docx_to_pdf
 
             try:
                 pdf = docx_to_pdf(str(docx_path), out_dir=str(out))
                 result["pdf_path"] = pdf
             except RuntimeError as e:
                 result["error"] = f"PDF conversion failed (docx saved OK): {e}"
+
+            # The fast estimator under-counts, so auto-fit can still overflow.
+            # Verify against the REAL page count and step the font down until it
+            # truly fits one page (down to a readability floor) — never cut content.
+            if auto_fill and one_page and result.get("pdf_path"):
+                family = fc.body_font or "Calibri"
+                for _ in range(4):
+                    try:
+                        if count_pdf_pages(result["pdf_path"]) <= 1:
+                            break
+                    except Exception:
+                        break
+                    cur = fc.body_size or 11.0
+                    new_body = max(6.5, round(cur - 0.7, 1))
+                    if new_body >= cur:
+                        break
+                    fc = _fc_from_body(family, new_body)
+                    doc = _build_doc(personal, education, matched_payload, fc, one_page)
+                    doc.save(str(docx_path))
+                    try:
+                        result["pdf_path"] = docx_to_pdf(str(docx_path), out_dir=str(out))
+                    except RuntimeError:
+                        break
+                    result["font_config_used"] = {
+                        "body_size": fc.body_size,
+                        "heading_size": fc.heading_size,
+                        "name_size": fc.name_size,
+                    }
 
     except Exception as e:
         result["error"] = str(e)
