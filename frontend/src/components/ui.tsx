@@ -44,8 +44,11 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 export function SectionTitle({ eyebrow, title, hint }: { eyebrow?: string; title: string; hint?: string }) {
   return (
     <div className="mb-5">
-      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <h2 className="font-[var(--font-display)] text-xl font-bold tracking-tight text-chalk sm:text-2xl">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <span className="section-mark" aria-hidden="true" />
+        {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+      </div>
+      <h2 className="font-[var(--font-display)] text-xl font-extrabold tracking-tight text-chalk sm:text-[1.7rem]">
         {title}
       </h2>
       {hint && <p className="mt-1.5 max-w-prose text-sm text-ash">{hint}</p>}
@@ -96,7 +99,7 @@ export function ErrorNote({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="rounded-[10px] border border-red-500/40 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300"
+      className="rounded-[10px] border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700"
     >
       {message}
     </div>

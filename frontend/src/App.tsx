@@ -32,7 +32,10 @@ function Header() {
     <header className="site-header">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
         <div className="flex items-center gap-3.5">
-          <Logo />
+          <div className="relative">
+            <span className="ember-glow" aria-hidden="true" />
+            <Logo />
+          </div>
           <div>
             <div className="font-[var(--font-display)] text-2xl font-black leading-none tracking-tight">
               Resume<span className="heat-text">Forge</span>

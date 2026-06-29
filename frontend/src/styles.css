@@ -43,15 +43,30 @@
   body {
     margin: 0;
     background:
-      radial-gradient(900px 480px at 85% -12%, rgba(124, 92, 252, 0.16), transparent 60%),
-      radial-gradient(820px 460px at 3% -4%, rgba(6, 182, 212, 0.14), transparent 55%),
-      radial-gradient(760px 520px at 50% 116%, rgba(236, 72, 153, 0.12), transparent 60%),
+      radial-gradient(820px 460px at 88% -14%, rgba(255, 90, 31, 0.16), transparent 58%),
+      radial-gradient(900px 520px at 90% -6%, rgba(124, 92, 252, 0.2), transparent 60%),
+      radial-gradient(820px 480px at -2% 2%, rgba(6, 182, 212, 0.16), transparent 55%),
+      radial-gradient(900px 600px at 50% 118%, rgba(236, 72, 153, 0.14), transparent 62%),
       var(--color-forge);
     background-attachment: fixed;
     color: var(--color-chalk);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     min-height: 100dvh;
+  }
+  /* Faint grain so large light areas read as a surface, not a void. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+  #root {
+    position: relative;
+    z-index: 1;
   }
   ::selection {
     background: rgba(124, 92, 252, 0.22);
@@ -85,12 +100,78 @@
   }
 
   .card {
-    background: var(--color-graphite);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #ffffff, #fcfcff);
     border: 1px solid var(--color-steel-2);
     border-radius: var(--radius-card);
     box-shadow:
       0 1px 2px rgba(20, 22, 50, 0.05),
       0 18px 44px -22px rgba(60, 40, 120, 0.28);
+    transition:
+      transform 0.22s ease,
+      box-shadow 0.22s ease,
+      border-color 0.22s ease;
+  }
+  /* The signature: a thin molten edge across the top of every card. */
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--color-quench),
+      var(--color-violet) 34%,
+      var(--color-fuchsia) 64%,
+      var(--color-ember) 88%,
+      var(--color-amber)
+    );
+    opacity: 0.9;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-steel-2);
+    box-shadow:
+      0 1px 2px rgba(20, 22, 50, 0.05),
+      0 28px 60px -26px rgba(124, 92, 252, 0.42);
+  }
+
+  @keyframes heatflow {
+    to {
+      background-position: 200% center;
+    }
+  }
+  @keyframes emberpulse {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.08);
+    }
+  }
+
+  /* Section header marker — a small molten bar that anchors each section. */
+  .section-mark {
+    display: inline-block;
+    width: 26px;
+    height: 4px;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--color-violet), var(--color-fuchsia) 55%, var(--color-ember));
+  }
+
+  /* Ember glow that sits behind the wordmark logo. */
+  .ember-glow {
+    position: absolute;
+    inset: -8px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 60%, rgba(255, 90, 31, 0.55), rgba(124, 92, 252, 0.35) 55%, transparent 72%);
+    filter: blur(11px);
+    z-index: -1;
+    animation: emberpulse 3.6s ease-in-out infinite;
   }
 
   /* Sticky, frosted header with a gradient accent line underneath */
@@ -109,8 +190,17 @@
     right: 0;
     bottom: -2px;
     height: 2px;
-    background: linear-gradient(90deg, var(--color-violet), var(--color-fuchsia) 55%, var(--color-ember));
-    opacity: 0.9;
+    background: linear-gradient(
+      90deg,
+      var(--color-quench),
+      var(--color-violet) 30%,
+      var(--color-fuchsia) 58%,
+      var(--color-ember) 84%,
+      var(--color-amber)
+    );
+    background-size: 200% auto;
+    animation: heatflow 7s linear infinite;
+    opacity: 0.95;
   }
 
   /* Link styled as a subtle chip */
@@ -140,10 +230,18 @@
     );
   }
   .heat-text {
-    background: linear-gradient(92deg, var(--color-violet), var(--color-fuchsia) 52%, var(--color-ember));
+    background: linear-gradient(
+      92deg,
+      var(--color-violet),
+      var(--color-fuchsia) 42%,
+      var(--color-ember) 72%,
+      var(--color-amber)
+    );
+    background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    animation: heatflow 7s linear infinite;
   }
 
   /* Primary action — vivid gradient that lifts and glows on hover */
