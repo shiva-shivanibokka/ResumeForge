@@ -1,43 +1,11 @@
-# Render Blueprint: the ResumeForge API + a separate LibreOffice PDF converter.
-# Two free Docker web services. Splitting PDF conversion out keeps the API under
-# Render's 512 MB free limit (LibreOffice's ~300 MB spike lives in its own box).
-# Deploy: push to GitHub, then Render → New → Blueprint, pointed at this repo.
-# Frontend deploys separately to Vercel/Cloudflare (see README).
+# Render Blueprint: the LibreOffice DOCX→PDF converter only.
+#
+# The main API runs on Hugging Face Spaces (16 GB free — no 512 MB OOM); it is
+# deployed from backend/ via .github/workflows/deploy-hf-space.yml. The API calls
+# this converter over HTTP using PDF_SERVICE_URL. The frontend deploys to Vercel.
+#
+# Deploy: Render → New → Blueprint, pointed at this repo.
 services:
-  - type: web
-    name: resumeforge-api
-    runtime: docker
-    plan: free
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    healthCheckPath: /api/health
-    envVars:
-      - key: ENVIRONMENT
-        value: prod
-      # Your deployed frontend origin(s), comma-separated.
-      - key: ALLOWED_ORIGINS
-        sync: false
-      # Converter URL is injected automatically from the pdf service below.
-      - key: PDF_SERVICE_URL
-        fromService:
-          type: web
-          name: resumeforge-pdf
-          property: host
-      # RAG embedding cache (Neon) + embedding key.
-      - key: DATABASE_URL
-        sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
-      # Optional server-side provider keys (users can also bring their own).
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GITHUB_TOKEN
-        sync: false
-
   - type: web
     name: resumeforge-pdf
     runtime: docker
