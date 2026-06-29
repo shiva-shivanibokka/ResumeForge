@@ -33,24 +33,54 @@ def soffice_available() -> bool:
     return _find_soffice() is not None
 
 
+def _convert_via_service(src: Path, out: Path, service_url: str) -> str:
+    """POST the .docx to the external converter and save the returned .pdf."""
+    import requests
+
+    url = service_url.rstrip("/") + "/convert"
+    try:
+        with src.open("rb") as fh:
+            resp = requests.post(
+                url,
+                files={"file": (src.name, fh, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+                timeout=120,
+            )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f"PDF service request failed: {e}") from e
+
+    pdf_path = out / (src.stem + ".pdf")
+    pdf_path.write_bytes(resp.content)
+    return str(pdf_path)
+
+
 def docx_to_pdf(docx_path: str, out_dir: str | None = None) -> str:
     """Convert a .docx to .pdf and return the PDF path.
 
-    Raises RuntimeError if LibreOffice is unavailable or conversion fails.
+    Routes to an external converter (PDF_SERVICE_URL) when configured — this keeps
+    memory-heavy LibreOffice out of the main container. Otherwise uses local
+    LibreOffice (dev). Raises RuntimeError if neither is available or it fails.
     """
-    soffice = _find_soffice()
-    if not soffice:
-        raise RuntimeError(
-            "LibreOffice (soffice) not found. Install libreoffice-writer to enable "
-            "PDF export."
-        )
+    from app.config import get_settings
 
     src = Path(docx_path)
     if not src.exists():
         raise RuntimeError(f"Source docx not found: {docx_path}")
-
     out = Path(out_dir) if out_dir else src.parent
     out.mkdir(parents=True, exist_ok=True)
+
+    service_url = (get_settings().pdf_service_url or "").strip()
+    if service_url:
+        if not service_url.startswith("http"):
+            service_url = "https://" + service_url
+        return _convert_via_service(src, out, service_url)
+
+    soffice = _find_soffice()
+    if not soffice:
+        raise RuntimeError(
+            "PDF export not configured: set PDF_SERVICE_URL, or install "
+            "libreoffice-writer for local conversion."
+        )
 
     with tempfile.TemporaryDirectory(prefix="rf_soffice_profile_") as profile:
         try:

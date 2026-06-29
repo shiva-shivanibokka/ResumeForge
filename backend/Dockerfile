@@ -1,19 +1,13 @@
-# ResumeForge backend image.
-# LibreOffice is installed so DOCX->PDF conversion works in the container
-# (docx2pdf / MS Word can't run here — see app/services/pdf.py).
+# ResumeForge backend (API) image.
+# NOTE: LibreOffice is intentionally NOT installed here — it spikes ~300 MB and
+# OOM-kills Render's 512 MB free instance. DOCX->PDF conversion is delegated to
+# a separate converter service (PDF_SERVICE_URL); see pdf-service/ and
+# app/services/pdf.py. Without it, the app still delivers DOCX.
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
-
-# System deps: LibreOffice Writer for PDF export + fonts for clean rendering.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libreoffice-writer \
-        fonts-dejavu \
-        fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

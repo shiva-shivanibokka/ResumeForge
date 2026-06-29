@@ -44,6 +44,7 @@ Key design decisions are recorded as ADRs in [`docs/adr/`](docs/adr/):
 - [0003 — LibreOffice for PDF rendering](docs/adr/0003-libreoffice-pdf.md)
 - [0004 — Ephemeral TTL file store](docs/adr/0004-ephemeral-file-store.md)
 - [0005 — RAG project matching with a pgvector embedding cache](docs/adr/0005-rag-embedding-cache.md)
+- [0006 — Separate DOCX→PDF converter service](docs/adr/0006-pdf-converter-microservice.md)
 
 ## Tech stack
 

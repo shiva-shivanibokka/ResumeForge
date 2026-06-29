@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # the embedding feature is disabled and project ranking falls back to the LLM.
     database_url: str | None = None
 
+    # External DOCX->PDF converter (a small LibreOffice microservice). Keeps the
+    # memory-heavy LibreOffice out of this container so it fits Render's 512 MB.
+    # When unset, PDF export uses local LibreOffice if present (dev), else is
+    # skipped (DOCX still delivered).
+    pdf_service_url: str | None = None
+
     # Optional server-side provider keys (fallback when the user supplies none)
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
