@@ -69,7 +69,18 @@ async def generate_resume(
             num_projects=min(4, len(projects)), bullets_per_project=3,
         )
         if matched.get("_error"):
-            progress(f"Warning: {matched['_error']}")
+            detail = str(matched["_error"])
+            is_quota = any(
+                s in detail.lower()
+                for s in ("resource_exhausted", "429", "quota", "rate limit", "rate_limit")
+            )
+            hint = (
+                "rate limit or exhausted quota. Try a different engine/model "
+                "(Groq is free and fast), or check your API key's quota."
+                if is_quota
+                else "the model returned an error. Try again, or pick a different engine/model."
+            )
+            raise RuntimeError(f"Couldn't tailor with {provider}/{model or 'default'}: {hint}")
         progress(f"Selected: {[p.get('name', '') for p in matched.get('selected_projects', [])]}")
 
         fc = FontConfig(body_font=font_family, name_font=font_family, heading_font=font_family)
