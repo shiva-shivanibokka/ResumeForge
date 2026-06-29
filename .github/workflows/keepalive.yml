@@ -1,11 +1,11 @@
 name: keep-alive
 
-# Pings the Render health endpoint so the free-tier backend doesn't spin down
-# after 15 min idle (which causes a slow 503 cold-start on the next real visit).
+# Pings the backend (Hugging Face Space) and PDF converter (Render) health
+# endpoints so the free tiers don't spin down on idle (which causes a slow
+# cold-start on the next real visit).
 # NOTE: GitHub's scheduled cron is best-effort (can be delayed) and is auto-
 # disabled after 60 days with no repo commits — for rock-solid uptime, also set
-# up an external monitor (see README / UptimeRobot). Update the URL if the
-# backend host changes.
+# up an external monitor (see README / UptimeRobot). Update the URLs if a host changes.
 
 on:
   schedule:
@@ -16,14 +16,16 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping backend health
+      - name: Ping API + converter health
         run: |
-          for i in 1 2 3; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 \
-              https://resumeforge-api-pe93.onrender.com/api/health || echo "000")
-            echo "attempt $i -> $code"
-            [ "$code" = "200" ] && exit 0
-            sleep 15
-          done
-          echo "health check did not return 200"
-          exit 1
+          ping() {
+            for i in 1 2 3; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$1" || echo "000")
+              echo "$1 attempt $i -> $code"
+              [ "$code" = "200" ] && return 0
+              sleep 15
+            done
+            return 1
+          }
+          ping https://shiva-1993-resumeforge-api.hf.space/api/health || exit 1
+          ping https://resumeforgepdf.onrender.com/health || true
