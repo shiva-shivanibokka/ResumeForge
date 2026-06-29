@@ -76,10 +76,10 @@ export default function App() {
   return (
     <div className="min-h-dvh">
       <Header />
-      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[240px_1fr] lg:py-10">
-        <aside className="lg:sticky lg:top-10 lg:self-start">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
+        <div className="mb-6">
           <Stepper />
-        </aside>
+        </div>
         <motion.section
           key={step}
           initial={{ opacity: 0, y: 8 }}

@@ -53,7 +53,13 @@ export interface FetchProjectsDone {
 
 export interface Scores {
   ats_score?: number;
+  ats_label?: string;
+  ats_feedback?: string[];
   match_score?: number;
+  match_label?: string;
+  match_feedback?: string[];
+  matched_keywords?: string[];
+  missing_keywords?: string[];
   [k: string]: unknown;
 }
 

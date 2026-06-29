@@ -247,3 +247,34 @@ async def edit_resume(
         "scores": scores,
         "scores_md": scores_md,
     }
+
+
+@router.post("/rebuild-resume")
+async def rebuild_resume(
+    matched_payload: str = Form(...),
+    resume_data: str = Form(...),
+    page_option: str = Form("1-page"),
+    font_family: str = Form("Calibri"),
+    font_size: str = Form("auto"),
+):
+    """Re-render the resume with a new font/size/length — NO LLM call. Used by the
+    'Apply format' button so layout tweaks are instant and don't cost a model call.
+    Content (and therefore the score) is unchanged."""
+    matched = json.loads(matched_payload)
+    resume_dict = json.loads(resume_data)
+    one_page = page_option != "2-page"
+    fc, auto = _resume_font(font_family, font_size, one_page)
+    result = build_resume(
+        personal=resume_dict, education=resume_dict.get("education", []),
+        matched_payload=matched, output_dir=None, to_pdf=True,
+        one_page=one_page, font_config=fc, auto_fill=auto,
+    )
+    docx_path = result.get("docx_path")
+    pdf_path = result.get("pdf_path")
+    store = get_store()
+    return {
+        "docx_id": store.register(docx_path) if docx_path else None,
+        "pdf_id": store.register(pdf_path) if pdf_path else None,
+        "docx_name": Path(docx_path).name if docx_path else None,
+        "pdf_name": Path(pdf_path).name if pdf_path else None,
+    }

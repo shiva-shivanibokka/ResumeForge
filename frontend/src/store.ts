@@ -20,6 +20,7 @@ type Op =
   | "projects"
   | "generate"
   | "editResume"
+  | "reformat"
   | "coverLetter"
   | "editCover";
 
@@ -82,6 +83,7 @@ interface State {
   fetchProjects: (force?: boolean) => Promise<void>;
   generate: () => Promise<void>;
   editResume: (instructions: string) => Promise<void>;
+  reformatResume: () => Promise<void>;
   generateCover: () => Promise<void>;
   editCover: (instructions: string) => Promise<void>;
   cancel: () => void;
@@ -319,6 +321,27 @@ export const useStore = create<State>((set, get) => ({
         scores: d.scores ?? s.scores,
         scoresMd: d.scores_md || s.scoresMd,
       });
+    } catch (e) {
+      set({ error: msg(e) });
+    } finally {
+      set({ busy: null });
+    }
+  },
+
+  // Font/size/length only — re-renders the PDF with no LLM call (scores unchanged).
+  reformatResume: async () => {
+    const s = get();
+    if (!s.matchedPayload || !s.analysis) return;
+    set({ busy: "reformat", error: null });
+    try {
+      const form = new FormData();
+      form.set("matched_payload", JSON.stringify(s.matchedPayload));
+      form.set("resume_data", JSON.stringify(s.analysis.resume_data));
+      form.set("page_option", s.pageOption);
+      form.set("font_family", s.fontFamily);
+      form.set("font_size", s.fontSize);
+      const d = await post<GenerateDone>("/api/rebuild-resume", form);
+      set({ resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name } });
     } catch (e) {
       set({ error: msg(e) });
     } finally {

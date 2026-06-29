@@ -11,7 +11,7 @@ export function Stepper() {
   const { step, reached, goTo } = useStore();
 
   return (
-    <nav aria-label="Forge stages" className="flex gap-2 lg:flex-col lg:gap-1">
+    <nav aria-label="Forge stages" className="flex w-full gap-2">
       {STAGES.map((s, i) => {
         const active = step === s.id;
         const open = reached[s.id];
@@ -22,7 +22,7 @@ export function Stepper() {
             disabled={!open}
             aria-current={active ? "step" : undefined}
             className={[
-              "group flex flex-1 items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition lg:flex-none",
+              "flex flex-1 items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition",
               active
                 ? "border-violet/50 bg-violet/10 shadow-sm"
                 : open
@@ -33,16 +33,16 @@ export function Stepper() {
             <span
               className={[
                 "flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-[var(--font-mono)] text-xs",
-                active ? "heat-gradient text-[#1a0c02]" : "border border-steel text-ash",
+                active ? "heat-gradient text-white" : "border border-steel text-ash",
               ].join(" ")}
             >
               {String(i + 1).padStart(2, "0")}
             </span>
-            <span className="hidden min-w-0 lg:block">
+            <span className="min-w-0">
               <span className={`block text-sm font-semibold ${active ? "text-chalk" : "text-ash-2"}`}>
                 {s.label}
               </span>
-              <span className="block truncate text-[0.7rem] text-ash">{s.sub}</span>
+              <span className="hidden truncate text-[0.7rem] text-ash sm:block">{s.sub}</span>
             </span>
           </button>
         );
