@@ -1,11 +1,12 @@
 """Postgres + pgvector store for cached GitHub-project embeddings.
 
 Disabled (and inert) when DATABASE_URL is unset, so local dev and the existing
-flow work with no database. One idempotent table; cosine search via pgvector's
-`<=>` operator. Vectors are sent as `'[...]'::vector` literals (no client-side
-type registration needed, which avoids an extension-not-yet-created bootstrap
-problem). Read paths degrade to "empty" on any error so the API never 500s on a
-database hiccup — callers fall back to LLM ranking.
+flow work with no database. The embedding column is dimension-agnostic (`vector`
+with no fixed size) so vectors from different models can coexist — Gemini (768)
+and OpenAI (1536). Each row records its `embedding_model`; ranking only ever
+compares vectors of the same model (all of a user's rows share one model, since
+they're replaced atomically). Cosine search via pgvector's `<=>` operator.
+Read paths degrade to "empty" on any error so the API never 500s on a DB hiccup.
 """
 
 from __future__ import annotations
@@ -16,19 +17,18 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from app.config import get_settings
-from app.embeddings import EMBED_DIM, EMBED_MODEL
 from app.logging import get_logger
 
 log = get_logger("db")
 
-_CREATE = f"""
+_CREATE = """
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS project_embeddings (
     id            bigserial PRIMARY KEY,
     github_user   text NOT NULL,
     name          text NOT NULL,
     data          jsonb NOT NULL,
-    embedding     vector({EMBED_DIM}) NOT NULL,
+    embedding     vector NOT NULL,
     embedding_model text NOT NULL,
     updated_at    timestamptz NOT NULL DEFAULT now(),
     UNIQUE (github_user, name)
@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS project_embeddings (
 CREATE INDEX IF NOT EXISTS project_embeddings_user_idx
     ON project_embeddings (github_user);
 """
+
+# Migrate an older fixed-dimension column (vector(768)) to dimension-agnostic.
+_ALTER = "ALTER TABLE project_embeddings ALTER COLUMN embedding TYPE vector;"
 
 
 def is_enabled() -> bool:
@@ -59,12 +62,16 @@ def _vec(values: list[float]) -> str:
 
 
 def init_db() -> None:
-    """Create the extension + table. Called once at startup when enabled."""
+    """Create the extension + table (and migrate the column type) when enabled."""
     if not is_enabled():
         return
     with _conn() as conn:
         conn.execute(_CREATE)
-    log.info("db_ready", model=EMBED_MODEL, dim=EMBED_DIM)
+        try:
+            conn.execute(_ALTER)
+        except Exception as e:  # noqa: BLE001 - already dimension-agnostic / nothing to do
+            log.info("db_alter_skipped", detail=str(e)[:120])
+    log.info("db_ready")
 
 
 def cache_status(github_user: str) -> dict:
@@ -77,7 +84,7 @@ def cache_status(github_user: str) -> dict:
                 "SELECT count(*), max(updated_at) FROM project_embeddings WHERE github_user = %s",
                 (github_user,),
             ).fetchone()
-    except Exception as e:  # noqa: BLE001 - never 500 on a DB hiccup
+    except Exception as e:  # noqa: BLE001
         log.error("cache_status_failed", error=str(e))
         return {"cached": False, "count": 0, "embedded_at": None}
     count = row[0] if row else 0
@@ -89,8 +96,24 @@ def cache_status(github_user: str) -> dict:
     }
 
 
+def cached_model(github_user: str) -> str | None:
+    """The embedding model a user's cached projects were embedded with (or None)."""
+    if not is_enabled():
+        return None
+    try:
+        with _conn() as conn:
+            row = conn.execute(
+                "SELECT embedding_model FROM project_embeddings WHERE github_user = %s LIMIT 1",
+                (github_user,),
+            ).fetchone()
+        return row[0] if row else None
+    except Exception as e:  # noqa: BLE001
+        log.error("cached_model_failed", error=str(e))
+        return None
+
+
 def replace_user_projects(
-    github_user: str, items: list[tuple[str, dict, list[float]]]
+    github_user: str, items: list[tuple[str, dict, list[float]]], embedding_model: str
 ) -> None:
     """Atomically replace all cached rows for a user with fresh (name, data, vec)."""
     if not is_enabled():
@@ -104,7 +127,7 @@ def replace_user_projects(
                 """INSERT INTO project_embeddings
                    (github_user, name, data, embedding, embedding_model)
                    VALUES (%s, %s, %s, %s::vector, %s)""",
-                (github_user, name, json.dumps(data), _vec(vec), EMBED_MODEL),
+                (github_user, name, json.dumps(data), _vec(vec), embedding_model),
             )
 
 

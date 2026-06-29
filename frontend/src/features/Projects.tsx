@@ -7,12 +7,30 @@ export function Projects() {
   const fetching = s.busy === "projects";
   const a = s.analysis;
   const keywords = [...(a?.required_keywords ?? []), ...(a?.preferred_keywords ?? [])];
+  const matchedSkills =
+    ((a?.gap as Record<string, unknown> | undefined)?.already_have as string[] | undefined) ?? [];
 
   return (
     <div className="space-y-5">
+      {matchedSkills.length > 0 && (
+        <Card>
+          <SectionTitle eyebrow="Step 02 · Heat" title="Skills already matching the JD" hint="The job asks for these and your resume already shows them — they'll be kept." />
+          <div className="flex flex-wrap gap-2">
+            {matchedSkills.map((skill) => (
+              <span
+                key={skill}
+                className="inline-flex items-center gap-1 rounded-full border border-teal/40 bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal"
+              >
+                ✓ {skill}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {keywords.length > 0 && (
         <Card>
-          <SectionTitle eyebrow="Step 02 · Heat" title="Missing keywords to work in" hint="The job asks for these and your resume is light on them. Pick the ones that are genuinely true for you — they'll be woven into the forged resume." />
+          <SectionTitle title="Missing keywords to work in" hint="The job asks for these and your resume is light on them. Pick the ones that are genuinely true for you — they'll be added to your skills and woven into the resume." />
           <div className="flex flex-wrap gap-2">
             {keywords.map((k) => {
               const on = s.selectedKeywords.includes(k.keyword);

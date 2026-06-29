@@ -30,6 +30,51 @@ def _inject_keywords(jd_dict: dict, keywords: list) -> None:
         jd_dict["keywords"] = list(dict.fromkeys(keywords + jd_dict.get("keywords", [])))
 
 
+def _flatten_skills(skills) -> list[str]:
+    """Normalize skills (list | dict | comma-string | nested) to a flat string list."""
+    out: list[str] = []
+    if isinstance(skills, dict):
+        for v in skills.values():
+            out += _flatten_skills(v)
+    elif isinstance(skills, list):
+        for item in skills:
+            if isinstance(item, str):
+                out.append(item.strip())
+            elif isinstance(item, dict):
+                out += _flatten_skills(item.get("skills") or list(item.values()))
+    elif isinstance(skills, str):
+        out += [s.strip() for s in skills.split(",") if s.strip()]
+    return [s for s in out if s]
+
+
+def _augment_skills(matched: dict, resume_dict: dict, selected_keywords: list) -> None:
+    """Guarantee the resume keeps EVERY existing skill plus the selected keywords.
+
+    The LLM is asked to preserve skills, but it sometimes drops them — this is the
+    safety net so the skills section is additive, never lossy.
+    """
+    tailored = matched.get("tailored_skills")
+    if not isinstance(tailored, dict):
+        tailored = {}
+
+    present = {s.lower() for v in tailored.values() for s in _flatten_skills(v)}
+    desired = _flatten_skills(resume_dict.get("skills")) + [
+        k for k in (selected_keywords or []) if isinstance(k, str)
+    ]
+
+    missing, seen = [], set()
+    for s in desired:
+        key = s.lower()
+        if key and key not in present and key not in seen:
+            missing.append(s)
+            seen.add(key)
+
+    if missing:
+        existing = _flatten_skills(tailored.get("Additional Skills"))
+        tailored["Additional Skills"] = ", ".join(existing + missing)
+    matched["tailored_skills"] = tailored
+
+
 @router.post("/generate")
 async def generate_resume(
     provider: str = Form("anthropic"),
@@ -81,6 +126,9 @@ async def generate_resume(
                 else "the model returned an error. Try again, or pick a different engine/model."
             )
             raise RuntimeError(f"Couldn't tailor with {provider}/{model or 'default'}: {hint}")
+
+        # Keep every existing skill + the user's selected keywords (never drop skills).
+        _augment_skills(matched, resume_dict, keywords)
         progress(f"Selected: {[p.get('name', '') for p in matched.get('selected_projects', [])]}")
 
         fc = FontConfig(body_font=font_family, name_font=font_family, heading_font=font_family)

@@ -600,7 +600,7 @@ def auto_fit_font_size(
     one_page: bool = True,
     target_pages: int = 1,
     min_body: float = 7.5,
-    max_body: float = 10.5,
+    max_body: float = 11.5,
 ) -> FontConfig:
     """
     Binary-search for the largest body font size where the resume fits

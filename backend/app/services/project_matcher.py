@@ -249,10 +249,10 @@ def match_and_tailor(
 - No bullet should be generic — every bullet must be specific to THIS project
 
 ### SKILLS SECTION
-- Create 4-5 skill categories
-- Include only skills the candidate demonstrably has (from projects + experience)
-- Prioritise skills the JD explicitly mentions
-- Do NOT invent skills not evidenced in their background
+- Include EVERY skill from the candidate's existing resume skills — do NOT drop any of them
+- ALSO include the JD's required/preferred keywords that appear in required_skills/keywords above
+- Organize everything into 4-6 clear categories; order JD-relevant skills first within each
+- Do NOT invent skills with no basis in the candidate's background
 
 ### EXPERIENCE BULLETS
 - Light touch only — rewrite 1-2 bullets per role to mirror JD language

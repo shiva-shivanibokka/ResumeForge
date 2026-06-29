@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from app import db
 from app.deps import get_llm, https
-from app.embeddings import resolve_embed_key
+from app.embeddings import resolve_embedder
 from app.services import rag
 from app.services.github_parser import parse_github_profile, parse_github_url
 from app.services.project_matcher import rank_projects_for_jd
@@ -50,8 +50,8 @@ async def fetch_projects(
     user = parse_github_url(gh)
     token = (gh_token or "").strip() or None
     reembed = force_reembed.lower() == "true"
-    embed_key = resolve_embed_key(provider, api_key)
-    use_rag = bool(user) and rag.available(embed_key)
+    embedder = resolve_embedder(provider, api_key)
+    use_rag = bool(user) and db.is_enabled() and embedder is not None
 
     def crawl_summarize(progress):
         gh_result = parse_github_profile(
@@ -66,17 +66,24 @@ async def fetch_projects(
         if use_rag:
             try:
                 cached = db.cache_status(user)
-                if reembed or not cached["cached"]:
-                    all_projects = crawl_summarize(progress)
-                    count = rag.embed_and_store(user, all_projects, embed_key, progress)
-                    progress(f"Cached {count} embedded projects.")
-                else:
+                # Reuse the cache only if it exists AND was embedded with this same
+                # model (a different engine -> different vector space -> re-embed).
+                fresh = (
+                    cached["cached"]
+                    and not reembed
+                    and db.cached_model(user) == embedder[1]
+                )
+                if fresh:
                     progress(
                         f"Using {cached['count']} cached projects "
                         f"(embedded {cached['embedded_at']})."
                     )
+                else:
+                    all_projects = crawl_summarize(progress)
+                    count = rag.embed_and_store(user, all_projects, embedder, progress)
+                    progress(f"Cached {count} embedded projects.")
                 progress("Ranking projects for this JD (vector search)...")
-                ranked = rag.rank(user, jd_dict, embed_key, top_n=10)
+                ranked = rag.rank(user, jd_dict, embedder, top_n=10)
                 if ranked:
                     return {"ranked": ranked, "all_projects": all_projects, "count": len(ranked), "mode": "rag"}
                 progress("Vector search returned nothing — using direct ranking...")

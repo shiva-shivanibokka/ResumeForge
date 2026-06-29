@@ -254,7 +254,14 @@ export const useStore = create<State>((set, get) => ({
       return;
     }
     controller = new AbortController();
-    set({ busy: "generate", error: null, generateLog: [] });
+    // Jump to the Forge dashboard immediately so the user watches the build live.
+    set({
+      busy: "generate",
+      error: null,
+      generateLog: [],
+      reached: { ...s.reached, forge: true, letter: true },
+      step: "forge",
+    });
     try {
       const form = new FormData();
       creds(s, form);
