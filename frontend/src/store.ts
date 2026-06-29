@@ -5,7 +5,6 @@ import type {
   AnalyseResponse,
   CoverLetterDone,
   GenerateDone,
-  KeywordItem,
   Project,
   ProviderInfo,
   Scores,
@@ -63,7 +62,6 @@ interface State {
   resume: { docxId: string | null; pdfId: string | null; docxName: string | null; pdfName: string | null };
   scores: Scores | null;
   beforeScores: Scores | null;
-  scoresMd: string;
   jobLabel: string;
   generateLog: string[];
 
@@ -133,7 +131,6 @@ export const useStore = create<State>((set, get) => ({
   resume: { docxId: null, pdfId: null, docxName: null, pdfName: null },
   scores: null,
   beforeScores: null,
-  scoresMd: "",
   jobLabel: "",
   generateLog: [],
 
@@ -290,7 +287,6 @@ export const useStore = create<State>((set, get) => ({
           resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name },
           scores: d.scores,
           beforeScores: d.before_scores ?? null,
-          scoresMd: d.scores_md,
           jobLabel: d.job_label ?? "",
           reached: { ...get().reached, forge: true, letter: true },
           step: "forge",
@@ -323,7 +319,6 @@ export const useStore = create<State>((set, get) => ({
         matchedPayload: d.matched_payload,
         resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name },
         scores: d.scores ?? s.scores,
-        scoresMd: d.scores_md || s.scoresMd,
       });
     } catch (e) {
       set({ error: msg(e) });
@@ -479,5 +474,3 @@ function msg(e: unknown): string {
 function aborted(e: unknown): boolean {
   return e instanceof DOMException && e.name === "AbortError";
 }
-
-export type { KeywordItem, Project };

@@ -599,28 +599,6 @@ def _estimate_pages_docx(docx_path: str) -> float:
         return 1.0  # assume fits if we can't measure
 
 
-def _count_pages_pdf(docx_path: str) -> int:
-    """
-    Convert .docx to a temp PDF (LibreOffice) and count pages.
-    Only used for the final verification after binary search — not during search.
-    Returns 1 if conversion is unavailable, so layout logic degrades gracefully.
-    """
-    import tempfile
-
-    from app.services.pdf import count_pdf_pages, docx_to_pdf
-
-    with tempfile.TemporaryDirectory(prefix="rf_pagecount_") as tmp:
-        try:
-            pdf = docx_to_pdf(docx_path, out_dir=tmp)
-            return count_pdf_pages(pdf)
-        except (RuntimeError, OSError):
-            return 1
-
-
-# Keep old name as alias (used by external code)
-_count_pages = _count_pages_pdf
-
-
 def _build_doc(personal, education, matched_payload, fc, one_page):
     """Build and return a Document object (no saving)."""
     doc = _new_doc(one_page, fc)
@@ -669,8 +647,9 @@ def auto_fit_font_size(
     def _fits_fast(body: float) -> bool:
         """
         Fast page-fit check using the pure-Python estimator.
-        Threshold is 0.95 (not 1.0) to leave a conservative 5% safety margin
-        so the final Word render never overflows by a line or two.
+        Threshold is 0.92 (not 1.0) to leave a conservative safety margin so the
+        final render rarely overflows; the real-PDF verify loop in build_resume
+        corrects any remaining overflow.
         """
         fc = _make_fc(body)
         doc = _build_doc(personal, education, matched_payload, fc, one_page)

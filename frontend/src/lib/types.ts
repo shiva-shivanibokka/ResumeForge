@@ -28,7 +28,6 @@ export interface AnalyseResponse {
   resume_raw_text: string;
   linkedin_url: string;
   gap: Record<string, unknown>;
-  gap_markdown: string;
   required_keywords: KeywordItem[];
   preferred_keywords: KeywordItem[];
 }
@@ -43,12 +42,6 @@ export interface Project {
   github_url?: string;
   stars?: number;
   [k: string]: unknown;
-}
-
-export interface FetchProjectsDone {
-  ranked: Project[];
-  all_projects: Project[];
-  count: number;
 }
 
 export interface Scores {
@@ -71,7 +64,6 @@ export interface GenerateDone {
   pdf_name: string | null;
   scores: Scores | null;
   before_scores?: Scores | null;
-  scores_md: string;
   job_label?: string;
 }
 

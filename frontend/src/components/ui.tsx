@@ -37,10 +37,6 @@ export function Card({ className = "", children }: { className?: string; childre
   return <div className={`card p-5 sm:p-6 ${className}`}>{children}</div>;
 }
 
-export function Eyebrow({ children }: { children: ReactNode }) {
-  return <div className="eyebrow mb-2">{children}</div>;
-}
-
 export function SectionTitle({ eyebrow, title, hint }: { eyebrow?: string; title: string; hint?: string }) {
   return (
     <div className="mb-5">
@@ -77,21 +73,6 @@ export function Select({ className = "", children, ...rest }: SelectHTMLAttribut
     <select className={`field w-full appearance-none px-3 py-2.5 text-sm ${className}`} {...rest}>
       {children}
     </select>
-  );
-}
-
-export function Badge({ children, tone = "steel" }: { children: ReactNode; tone?: "steel" | "ember" | "free" }) {
-  const tones: Record<string, string> = {
-    steel: "border-steel-2 bg-graphite-2 text-ash-2",
-    ember: "border-ember/30 bg-ember/10 text-ember",
-    free: "border-teal/40 bg-teal/10 text-teal",
-  };
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 font-[var(--font-mono)] text-[0.65rem] uppercase tracking-wider ${tones[tone]}`}
-    >
-      {children}
-    </span>
   );
 }
 
