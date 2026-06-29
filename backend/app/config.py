@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # `allowed_origins` property below.
     allowed_origins_csv: str = Field("http://localhost:5173", validation_alias="ALLOWED_ORIGINS")
 
+    # Any origin matching this regex is also allowed — defaults to all Vercel
+    # deployments (prod + preview URLs), so the SPA works without pinning each
+    # exact origin. Set to "" to disable.
+    allowed_origin_regex: str | None = Field(
+        r"https://.*\.vercel\.app", validation_alias="ALLOWED_ORIGIN_REGEX"
+    )
+
     # Limits / resilience
     file_ttl_seconds: int = 1800
     max_upload_mb: int = 10

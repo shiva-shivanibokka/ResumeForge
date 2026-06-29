@@ -36,6 +36,18 @@ def test_download_unknown_id_404(client):
     assert r.status_code == 404
 
 
+def test_cors_allows_vercel_origin(client):
+    # Any *.vercel.app origin must be allowed by the regex (prod + preview URLs).
+    origin = "https://resume-forge-eight-olive.vercel.app"
+    r = client.get("/api/health", headers={"Origin": origin})
+    assert r.headers.get("access-control-allow-origin") == origin
+
+
+def test_cors_blocks_unknown_origin(client):
+    r = client.get("/api/health", headers={"Origin": "https://evil.example.com"})
+    assert r.headers.get("access-control-allow-origin") is None
+
+
 def test_analyse_missing_jd_returns_400(client, monkeypatch):
     # Stub the provider so no real key/network is needed; the request should still
     # 400 because neither a JD URL nor JD text is supplied.
