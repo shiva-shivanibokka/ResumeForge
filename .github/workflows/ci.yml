@@ -49,7 +49,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - run: npm ci
+      # `npm install` (not `npm ci`): the lockfile is generated on Windows and
+      # omits Linux-only native optional deps (lightningcss/rollup), which `npm ci`
+      # then refuses to install — so vite build can't load its Tailwind v4 config.
+      - run: npm install --no-audit --no-fund
       - name: Type-check
         run: npm run typecheck
       - name: Build
