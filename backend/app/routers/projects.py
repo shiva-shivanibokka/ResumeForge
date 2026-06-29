@@ -62,22 +62,30 @@ async def fetch_projects(
         return gh_result["projects"]
 
     def work(progress):
+        all_projects: list = []
         if use_rag:
-            cached = db.cache_status(user)
-            if reembed or not cached["cached"]:
-                all_projects = crawl_summarize(progress)
-                count = rag.embed_and_store(user, all_projects, embed_key, progress)
-                progress(f"Cached {count} embedded projects.")
-            else:
-                progress(f"Using {cached['count']} cached projects (embedded {cached['embedded_at']}).")
-                all_projects = []  # not needed; ranking reads from the cache
+            try:
+                cached = db.cache_status(user)
+                if reembed or not cached["cached"]:
+                    all_projects = crawl_summarize(progress)
+                    count = rag.embed_and_store(user, all_projects, embed_key, progress)
+                    progress(f"Cached {count} embedded projects.")
+                else:
+                    progress(
+                        f"Using {cached['count']} cached projects "
+                        f"(embedded {cached['embedded_at']})."
+                    )
+                progress("Ranking projects for this JD (vector search)...")
+                ranked = rag.rank(user, jd_dict, embed_key, top_n=10)
+                if ranked:
+                    return {"ranked": ranked, "all_projects": all_projects, "count": len(ranked), "mode": "rag"}
+                progress("Vector search returned nothing — using direct ranking...")
+            except Exception as e:  # noqa: BLE001 - degrade to the LLM path
+                progress(f"Embedding path unavailable — using direct ranking. ({e})")
 
-            progress("Ranking projects for this JD (vector search)...")
-            ranked = rag.rank(user, jd_dict, embed_key, top_n=10)
-            return {"ranked": ranked, "all_projects": all_projects, "count": len(ranked), "mode": "rag"}
-
-        # Fallback: crawl + LLM rank every time (no DB / no embedding key)
-        all_projects = crawl_summarize(progress)
+        # Fallback: crawl (if not already) + LLM rank.
+        if not all_projects:
+            all_projects = crawl_summarize(progress)
         progress("Ranking top 10 projects for this JD...")
         ranked = rank_projects_for_jd(jd_dict, all_projects, llm, top_n=10)
         return {"ranked": ranked, "all_projects": all_projects, "count": len(ranked), "mode": "llm"}

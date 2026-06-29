@@ -17,9 +17,8 @@ anthropic>=0.93.0
 openai>=1.40.0
 google-genai>=0.3.0
 groq>=0.11.0
-# RAG embedding cache (Postgres + pgvector); inert unless DATABASE_URL is set
+# RAG embedding cache (Postgres + pgvector extension); inert unless DATABASE_URL is set
 psycopg[binary]>=3.1
-pgvector>=0.3.0
 # NOTE: PDF export uses LibreOffice headless (system package: libreoffice-writer),
 # installed in the Docker image — not a pip dependency. docx2pdf was removed
 # because it requires Microsoft Word and does not run on Linux.

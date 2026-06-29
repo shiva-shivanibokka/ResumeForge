@@ -28,6 +28,10 @@ def test_resolve_embed_key_none_when_unavailable(monkeypatch):
     assert resolve_embed_key("groq", "groq-key") is None
 
 
+def test_vec_literal_format():
+    assert db._vec([0.5, 1, 2.25]) == "[0.5,1.0,2.25]"
+
+
 def test_db_disabled_without_url(monkeypatch):
     from app.config import Settings
 

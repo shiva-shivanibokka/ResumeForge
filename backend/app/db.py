@@ -2,7 +2,10 @@
 
 Disabled (and inert) when DATABASE_URL is unset, so local dev and the existing
 flow work with no database. One idempotent table; cosine search via pgvector's
-`<=>` operator. Connections are short-lived (Neon pools server-side).
+`<=>` operator. Vectors are sent as `'[...]'::vector` literals (no client-side
+type registration needed, which avoids an extension-not-yet-created bootstrap
+problem). Read paths degrade to "empty" on any error so the API never 500s on a
+database hiccup — callers fall back to LLM ranking.
 """
 
 from __future__ import annotations
@@ -42,14 +45,17 @@ def is_enabled() -> bool:
 @contextmanager
 def _conn() -> Iterator:
     import psycopg
-    from pgvector.psycopg import register_vector
 
     conn = psycopg.connect(get_settings().database_url, autocommit=True)
     try:
-        register_vector(conn)
         yield conn
     finally:
         conn.close()
+
+
+def _vec(values: list[float]) -> str:
+    """Format a vector as a pgvector text literal for `%s::vector`."""
+    return "[" + ",".join(repr(float(v)) for v in values) + "]"
 
 
 def init_db() -> None:
@@ -62,14 +68,18 @@ def init_db() -> None:
 
 
 def cache_status(github_user: str) -> dict:
-    """Return {cached, count, embedded_at} for a user."""
+    """Return {cached, count, embedded_at}; degrades to not-cached on error."""
     if not is_enabled():
         return {"cached": False, "count": 0, "embedded_at": None}
-    with _conn() as conn:
-        row = conn.execute(
-            "SELECT count(*), max(updated_at) FROM project_embeddings WHERE github_user = %s",
-            (github_user,),
-        ).fetchone()
+    try:
+        with _conn() as conn:
+            row = conn.execute(
+                "SELECT count(*), max(updated_at) FROM project_embeddings WHERE github_user = %s",
+                (github_user,),
+            ).fetchone()
+    except Exception as e:  # noqa: BLE001 - never 500 on a DB hiccup
+        log.error("cache_status_failed", error=str(e))
+        return {"cached": False, "count": 0, "embedded_at": None}
     count = row[0] if row else 0
     embedded_at: datetime | None = row[1] if row else None
     return {
@@ -85,33 +95,37 @@ def replace_user_projects(
     """Atomically replace all cached rows for a user with fresh (name, data, vec)."""
     if not is_enabled():
         return
-    with _conn() as conn:
-        with conn.transaction():
+    with _conn() as conn, conn.transaction():
+        conn.execute(
+            "DELETE FROM project_embeddings WHERE github_user = %s", (github_user,)
+        )
+        for name, data, vec in items:
             conn.execute(
-                "DELETE FROM project_embeddings WHERE github_user = %s", (github_user,)
+                """INSERT INTO project_embeddings
+                   (github_user, name, data, embedding, embedding_model)
+                   VALUES (%s, %s, %s, %s::vector, %s)""",
+                (github_user, name, json.dumps(data), _vec(vec), EMBED_MODEL),
             )
-            for name, data, vec in items:
-                conn.execute(
-                    """INSERT INTO project_embeddings
-                       (github_user, name, data, embedding, embedding_model)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    (github_user, name, json.dumps(data), vec, EMBED_MODEL),
-                )
 
 
 def rank_by_vector(github_user: str, jd_vec: list[float], top_n: int = 10) -> list[dict]:
-    """Cosine-rank cached projects against the JD vector; attach match_score (0-100)."""
+    """Cosine-rank cached projects against the JD vector; degrades to [] on error."""
     if not is_enabled():
         return []
-    with _conn() as conn:
-        rows = conn.execute(
-            """SELECT data, 1 - (embedding <=> %s) AS score
-               FROM project_embeddings
-               WHERE github_user = %s
-               ORDER BY embedding <=> %s
-               LIMIT %s""",
-            (jd_vec, github_user, jd_vec, top_n),
-        ).fetchall()
+    lit = _vec(jd_vec)
+    try:
+        with _conn() as conn:
+            rows = conn.execute(
+                """SELECT data, 1 - (embedding <=> %s::vector) AS score
+                   FROM project_embeddings
+                   WHERE github_user = %s
+                   ORDER BY embedding <=> %s::vector
+                   LIMIT %s""",
+                (lit, github_user, lit, top_n),
+            ).fetchall()
+    except Exception as e:  # noqa: BLE001
+        log.error("rank_by_vector_failed", error=str(e))
+        return []
     results = []
     for data, score in rows:
         proj = dict(data)
