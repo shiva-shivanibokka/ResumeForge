@@ -599,7 +599,7 @@ def auto_fit_font_size(
     font_family: str = "Calibri",
     one_page: bool = True,
     target_pages: int = 1,
-    min_body: float = 7.5,
+    min_body: float = 7.0,
     max_body: float = 11.5,
 ) -> FontConfig:
     """
@@ -635,7 +635,7 @@ def auto_fit_font_size(
         try:
             doc.save(tmp)
             pages = _estimate_pages_docx(tmp)
-            return pages <= (target_pages * 0.95)
+            return pages <= (target_pages * 0.92)
         finally:
             try:
                 os.remove(tmp)

@@ -1,4 +1,22 @@
-from app.routers.generate import _augment_skills, _flatten_skills
+from app.routers.generate import _augment_skills, _flatten_skills, _resume_font
+
+
+def test_resume_font_auto_enables_autofit():
+    fc, auto = _resume_font("Calibri", "auto", one_page=True)
+    assert auto is True and fc.body_font == "Calibri"
+
+
+def test_resume_font_fixed_size_disables_autofit_with_ratios():
+    fc, auto = _resume_font("Arial", "10", one_page=True)
+    assert auto is False
+    assert fc.body_size == 10.0
+    assert fc.heading_size == 11.0  # 10 * 1.1
+    assert fc.name_size == 22.0  # 10 * 2.2
+
+
+def test_resume_font_bad_value_falls_back_to_auto():
+    fc, auto = _resume_font("Calibri", "huge", one_page=True)
+    assert auto is True
 
 
 def test_flatten_handles_list_dict_and_string():

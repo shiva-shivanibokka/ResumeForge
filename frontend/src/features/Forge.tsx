@@ -70,6 +70,19 @@ export function Forge() {
                 <option>Garamond</option>
               </Select>
             </div>
+            <div className="w-36">
+              <Label htmlFor="size">Size</Label>
+              <Select id="size" value={s.fontSize} onChange={(e) => s.set("fontSize", e.target.value)}>
+                <option value="auto">Auto-fit</option>
+                <option value="11">11 pt</option>
+                <option value="10.5">10.5 pt</option>
+                <option value="10">10 pt</option>
+                <option value="9.5">9.5 pt</option>
+                <option value="9">9 pt</option>
+                <option value="8.5">8.5 pt</option>
+                <option value="8">8 pt</option>
+              </Select>
+            </div>
             <Button onClick={() => s.editResume(edit).then(() => setEdit(""))} disabled={editing}>
               {editing ? <Spinner /> : "🔧"} {editing ? "Reworking…" : "Apply & rebuild"}
             </Button>

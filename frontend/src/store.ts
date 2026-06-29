@@ -39,6 +39,7 @@ interface State {
   resumeFile: File | null;
   pageOption: "1-page" | "2-page";
   fontFamily: string;
+  fontSize: string; // "auto" or a point size like "10"
 
   // flow
   step: StepId;
@@ -109,6 +110,7 @@ export const useStore = create<State>((set, get) => ({
   resumeFile: null,
   pageOption: "1-page",
   fontFamily: "Calibri",
+  fontSize: "auto",
 
   step: "materials",
   reached: { materials: true, projects: false, forge: false, letter: false },
@@ -275,6 +277,7 @@ export const useStore = create<State>((set, get) => ({
       form.set("github_url", s.githubUrl);
       form.set("page_option", s.pageOption);
       form.set("font_family", s.fontFamily);
+      form.set("font_size", s.fontSize);
       await streamPost("/api/generate", form, handleStream(set, get, "generateLog", (done) => {
         const d = done as unknown as GenerateDone;
         set({
@@ -308,6 +311,7 @@ export const useStore = create<State>((set, get) => ({
       form.set("jd_raw", s.analysis.jd_raw);
       form.set("page_option", s.pageOption);
       form.set("font_family", s.fontFamily);
+      form.set("font_size", s.fontSize);
       const d = await post<GenerateDone>("/api/edit-resume", form);
       set({
         matchedPayload: d.matched_payload,

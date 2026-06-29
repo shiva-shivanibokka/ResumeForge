@@ -22,6 +22,29 @@ from app.store import get_store
 router = APIRouter(prefix="/api", tags=["generate"])
 
 
+def _resume_font(font_family: str, font_size: str, one_page: bool) -> tuple[FontConfig, bool]:
+    """Build (FontConfig, auto_fill). font_size 'auto'/'' → proportional auto-fit;
+    a number → fixed body size (name ×2.2, heading ×1.1), auto-fit off."""
+    size = (font_size or "auto").strip().lower()
+    if size in ("", "auto", "auto-fit"):
+        fc = FontConfig(body_font=font_family, name_font=font_family, heading_font=font_family)
+        return fc, one_page
+    try:
+        b = float(size)
+    except ValueError:
+        fc = FontConfig(body_font=font_family, name_font=font_family, heading_font=font_family)
+        return fc, one_page
+    fc = FontConfig(
+        body_font=font_family,
+        name_font=font_family,
+        heading_font=font_family,
+        body_size=b,
+        heading_size=round(b * 1.1, 1),
+        name_size=round(b * 2.2, 1),
+    )
+    return fc, False
+
+
 def _inject_keywords(jd_dict: dict, keywords: list) -> None:
     if keywords:
         jd_dict["required_skills"] = list(
@@ -89,6 +112,7 @@ async def generate_resume(
     github_url: str = Form(""),
     page_option: str = Form("1-page"),
     font_family: str = Form("Calibri"),
+    font_size: str = Form("auto"),
     api_key: str = Form(""),
 ):
     llm = get_llm(provider, model, api_key)
@@ -131,12 +155,12 @@ async def generate_resume(
         _augment_skills(matched, resume_dict, keywords)
         progress(f"Selected: {[p.get('name', '') for p in matched.get('selected_projects', [])]}")
 
-        fc = FontConfig(body_font=font_family, name_font=font_family, heading_font=font_family)
-        progress(f"Building {'1-page' if one_page else '2-page'} A4 resume with auto-fit...")
+        fc, auto = _resume_font(font_family, font_size, one_page)
+        progress(f"Building {'1-page' if one_page else '2-page'} A4 resume...")
         build_result = build_resume(
             personal=resume_dict, education=resume_dict.get("education", []),
             matched_payload=matched, output_dir=None, to_pdf=True,
-            one_page=one_page, font_config=fc, auto_fill=one_page,
+            one_page=one_page, font_config=fc, auto_fill=auto,
         )
         if build_result.get("error"):
             progress(f"Note: {build_result['error']}")
@@ -175,6 +199,7 @@ async def edit_resume(
     jd_raw: str = Form(""),
     page_option: str = Form("1-page"),
     font_family: str = Form("Calibri"),
+    font_size: str = Form("auto"),
     api_key: str = Form(""),
 ):
     llm = get_llm(provider, model, api_key)
@@ -197,11 +222,11 @@ async def edit_resume(
     except (LLMError, ValueError, json.JSONDecodeError):
         updated = matched  # keep prior payload if the edit can't be parsed
 
-    fc = FontConfig(body_font=font_family, name_font=font_family, heading_font=font_family)
+    fc, auto = _resume_font(font_family, font_size, one_page)
     result = build_resume(
         personal=resume_dict, education=resume_dict.get("education", []),
         matched_payload=updated, output_dir=None, to_pdf=True,
-        one_page=one_page, font_config=fc, auto_fill=one_page,
+        one_page=one_page, font_config=fc, auto_fill=auto,
     )
     docx_path = result.get("docx_path")
     pdf_path = result.get("pdf_path")
