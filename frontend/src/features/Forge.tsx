@@ -8,15 +8,37 @@ import { Button, Card, ErrorNote, Label, SectionTitle, Select, Spinner, Textarea
 function ScoreBlock({
   label,
   score,
+  before,
   feedback,
 }: {
   label: string;
   score: number;
+  before?: number;
   feedback?: string[];
 }) {
+  const hasBefore = typeof before === "number" && before >= 0;
+  const delta = hasBefore ? score - (before as number) : 0;
   return (
     <div>
       <ScoreGauge label={label} score={score} />
+      {hasBefore && (
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-ash">
+          <span>
+            was <span className="text-ash-2">{before}/10</span> → now{" "}
+            <span className="text-chalk">{score}/10</span>
+          </span>
+          {delta !== 0 && (
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[0.7rem] font-semibold ${
+                delta > 0 ? "bg-teal/15 text-teal" : "bg-ember/15 text-ember"
+              }`}
+            >
+              {delta > 0 ? "+" : ""}
+              {delta}
+            </span>
+          )}
+        </div>
+      )}
       {feedback && feedback.length > 0 && (
         <ul className="mt-3 space-y-1.5">
           {feedback.map((f, i) => (
@@ -69,12 +91,22 @@ export function Forge() {
   return (
     <div className="space-y-5">
       <Card>
-        <SectionTitle eyebrow="Step 03 · Forge" title={s.jobLabel || "Your forged resume"} hint="Scored against the job, with what to improve under each." />
+        <SectionTitle eyebrow="Step 03 · Forge" title={s.jobLabel || "Your forged resume"} hint="The lift from your original, plus what to improve under each score." />
         {s.scores && (
           <div className="grid gap-6 sm:grid-cols-2">
-            <ScoreBlock label="ATS readiness" score={Number(s.scores.ats_score ?? 0)} feedback={s.scores.ats_feedback} />
+            <ScoreBlock
+              label="ATS readiness"
+              score={Number(s.scores.ats_score ?? 0)}
+              before={typeof s.beforeScores?.ats_score === "number" ? s.beforeScores.ats_score : undefined}
+              feedback={s.scores.ats_feedback}
+            />
             <div>
-              <ScoreBlock label="JD match" score={Number(s.scores.match_score ?? 0)} feedback={s.scores.match_feedback} />
+              <ScoreBlock
+                label="JD match"
+                score={Number(s.scores.match_score ?? 0)}
+                before={typeof s.beforeScores?.match_score === "number" ? s.beforeScores.match_score : undefined}
+                feedback={s.scores.match_feedback}
+              />
               {missing.length > 0 && (
                 <div className="mt-3">
                   <div className="eyebrow mb-1.5">Still missing from the JD — select, then add</div>
@@ -120,7 +152,9 @@ export function Forge() {
 
       <Card>
         <SectionTitle title="Preview" hint={reformatting ? "Rebuilding…" : undefined} />
-        <PdfPreview pdfId={s.resume.pdfId} title="Resume preview" />
+        <div className={reformatting ? "pointer-events-none opacity-50 transition" : "transition"}>
+          <PdfPreview pdfId={s.resume.pdfId} title="Resume preview" />
+        </div>
       </Card>
 
       <Card>

@@ -70,6 +70,7 @@ export interface GenerateDone {
   docx_name: string | null;
   pdf_name: string | null;
   scores: Scores | null;
+  before_scores?: Scores | null;
   scores_md: string;
   job_label?: string;
 }

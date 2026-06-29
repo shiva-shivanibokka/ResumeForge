@@ -185,7 +185,16 @@ async def generate_resume(
         if not docx_path:
             raise RuntimeError("Resume build failed.")
 
-        progress("Scoring resume...")
+        # Score the ORIGINAL resume too, so the UI can show before → after lift.
+        before_scores = None
+        if resume_raw_text.strip():
+            progress("Scoring your original resume for comparison...")
+            try:
+                before_scores = score_resume(resume_raw_text, jd_raw, llm)
+            except Exception:  # noqa: BLE001 - comparison is best-effort
+                before_scores = None
+
+        progress("Scoring tailored resume...")
         scores = score_resume(extract_resume_text(docx_path), jd_raw, llm)
         progress(f"ATS: {scores.get('ats_score', 0)}/10  JD Match: {scores.get('match_score', 0)}/10")
         progress("Done!")
@@ -197,6 +206,7 @@ async def generate_resume(
             "docx_name": Path(docx_path).name if docx_path else None,
             "pdf_name": Path(pdf_path).name if pdf_path else None,
             "scores": scores,
+            "before_scores": before_scores,
             "scores_md": score_card_markdown(scores),
             "job_label": f"{matched.get('job_title', '')} @ {matched.get('company', '')}",
         }

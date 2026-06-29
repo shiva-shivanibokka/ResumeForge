@@ -62,6 +62,7 @@ interface State {
   matchedPayload: Record<string, unknown> | null;
   resume: { docxId: string | null; pdfId: string | null; docxName: string | null; pdfName: string | null };
   scores: Scores | null;
+  beforeScores: Scores | null;
   scoresMd: string;
   jobLabel: string;
   generateLog: string[];
@@ -131,6 +132,7 @@ export const useStore = create<State>((set, get) => ({
   matchedPayload: null,
   resume: { docxId: null, pdfId: null, docxName: null, pdfName: null },
   scores: null,
+  beforeScores: null,
   scoresMd: "",
   jobLabel: "",
   generateLog: [],
@@ -287,6 +289,7 @@ export const useStore = create<State>((set, get) => ({
           matchedPayload: d.matched_payload,
           resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name },
           scores: d.scores,
+          beforeScores: d.before_scores ?? null,
           scoresMd: d.scores_md,
           jobLabel: d.job_label ?? "",
           reached: { ...get().reached, forge: true, letter: true },
@@ -453,9 +456,23 @@ function handleStream(
   };
 }
 
+// Map raw errors to a friendly, actionable message.
 function msg(e: unknown): string {
-  if (e instanceof ApiError) return e.message;
-  if (e instanceof Error) return e.message;
+  const raw = e instanceof Error ? e.message : "";
+  const low = raw.toLowerCase();
+  if (/failed to fetch|networkerror|load failed/.test(low)) {
+    return "Can't reach the server. It may be waking up (free tier sleeps when idle) — wait ~30s and try again.";
+  }
+  if (/quota|resource_exhausted|rate.?limit|\b429\b/.test(low)) {
+    return "The model is rate-limited or out of quota. Try a different engine/model (Groq is free and fast), or check your API key.";
+  }
+  if (/\b401\b|invalid.*key|unauthor/.test(low)) {
+    return "That API key was rejected. Double-check the key for the selected engine.";
+  }
+  if (/\b5\d\d\b|internal server/.test(low)) {
+    return "The server hit an error processing that. Try again in a moment.";
+  }
+  if (e instanceof ApiError || e instanceof Error) return raw || "Something went wrong. Please try again.";
   return "Something went wrong. Please try again.";
 }
 
