@@ -54,6 +54,7 @@ interface State {
   ranked: Project[];
   selectedProjects: Project[];
   projectsLog: string[];
+  cacheStatus: { enabled: boolean; cached: boolean; count: number; embedded_at: string | null } | null;
 
   // forge (resume)
   matchedPayload: Record<string, unknown> | null;
@@ -76,7 +77,8 @@ interface State {
   toggleKeyword: (k: string) => void;
   toggleProject: (p: Project) => void;
   analyse: () => Promise<void>;
-  fetchProjects: () => Promise<void>;
+  loadCacheStatus: () => Promise<void>;
+  fetchProjects: (force?: boolean) => Promise<void>;
   generate: () => Promise<void>;
   editResume: (instructions: string) => Promise<void>;
   generateCover: () => Promise<void>;
@@ -119,6 +121,7 @@ export const useStore = create<State>((set, get) => ({
   ranked: [],
   selectedProjects: [],
   projectsLog: [],
+  cacheStatus: null,
 
   matchedPayload: null,
   resume: { docxId: null, pdfId: null, docxName: null, pdfName: null },
@@ -192,6 +195,7 @@ export const useStore = create<State>((set, get) => ({
         reached: { ...get().reached, projects: true },
         step: "projects",
       });
+      get().loadCacheStatus();
     } catch (e) {
       set({ error: msg(e) });
     } finally {
@@ -199,7 +203,23 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
-  fetchProjects: async () => {
+  loadCacheStatus: async () => {
+    const s = get();
+    if (!s.githubUrl.trim()) {
+      set({ cacheStatus: null });
+      return;
+    }
+    try {
+      const status = await getJson<State["cacheStatus"]>(
+        `/api/projects/cache?github_url=${encodeURIComponent(s.githubUrl)}`,
+      );
+      set({ cacheStatus: status });
+    } catch {
+      set({ cacheStatus: null });
+    }
+  },
+
+  fetchProjects: async (force = false) => {
     const s = get();
     if (!s.githubUrl.trim()) {
       set({ error: "Add your GitHub profile URL to pull projects." });
@@ -214,10 +234,12 @@ export const useStore = create<State>((set, get) => ({
       form.set("github_url", s.githubUrl);
       form.set("gh_token", s.ghToken);
       form.set("jd_structured", JSON.stringify(s.analysis.jd_structured));
+      form.set("force_reembed", String(force));
       await streamPost("/api/fetch-projects", form, handleStream(set, get, "projectsLog", (done) => {
         const ranked = (done.ranked as Project[]) ?? [];
         set({ ranked, selectedProjects: ranked.slice(0, 4) });
       }), controller.signal);
+      await get().loadCacheStatus();
     } catch (e) {
       if (!aborted(e)) set({ error: msg(e) });
     } finally {

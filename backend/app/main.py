@@ -59,6 +59,14 @@ async def lifespan(app: FastAPI):
     get_logger("startup").info(
         "starting", environment=settings.environment, origins=settings.allowed_origins
     )
+    from app import db
+
+    if db.is_enabled():
+        try:
+            db.init_db()
+        except Exception as e:  # noqa: BLE001 - never let DB issues block startup
+            get_logger("startup").error("db_init_failed", error=str(e))
+
     store = get_store()
     store.start_background_sweeper()
     try:

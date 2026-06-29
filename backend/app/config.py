@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     request_timeout_s: int = 60
     llm_max_retries: int = 2
 
+    # Postgres (Neon) connection string for the RAG embedding cache. When unset,
+    # the embedding feature is disabled and project ranking falls back to the LLM.
+    database_url: str | None = None
+
     # Optional server-side provider keys (fallback when the user supplies none)
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None

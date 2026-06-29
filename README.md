@@ -43,6 +43,7 @@ Key design decisions are recorded as ADRs in [`docs/adr/`](docs/adr/):
 - [0002 — Multi-provider LLM abstraction](docs/adr/0002-multi-provider-llm.md)
 - [0003 — LibreOffice for PDF rendering](docs/adr/0003-libreoffice-pdf.md)
 - [0004 — Ephemeral TTL file store](docs/adr/0004-ephemeral-file-store.md)
+- [0005 — RAG project matching with a pgvector embedding cache](docs/adr/0005-rag-embedding-cache.md)
 
 ## Tech stack
 
@@ -92,6 +93,7 @@ Backend env vars (see `backend/.env.example`) — all optional except CORS in pr
 | `ALLOWED_ORIGINS` | Comma-separated frontend origins (CORS) |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GOOGLE_API_KEY` / `GROQ_API_KEY` | Optional server-side keys (users can also bring their own) |
 | `GITHUB_TOKEN` | Optional — raises GitHub API rate limit 60→5000/hr |
+| `DATABASE_URL` | Optional Postgres (Neon) for the RAG embedding cache. Unset → ranking falls back to the LLM. Needs `GOOGLE_API_KEY` too (embeddings use Gemini). |
 | `FILE_TTL_SECONDS`, `MAX_UPLOAD_MB`, `REQUEST_TIMEOUT_S`, `LLM_MAX_RETRIES` | Tunables (sensible defaults) |
 
 Frontend: `VITE_API_URL` — the backend base URL (blank → Vite proxy in dev).

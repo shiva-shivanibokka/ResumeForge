@@ -39,6 +39,7 @@ export interface Project {
   category?: string;
   tech_stack?: string[];
   relevance_reason?: string;
+  match_score?: number;
   github_url?: string;
   stars?: number;
   [k: string]: unknown;
