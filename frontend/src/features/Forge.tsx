@@ -74,12 +74,18 @@ export function Forge() {
               <ScoreBlock label="JD match" score={Number(s.scores.match_score ?? 0)} feedback={s.scores.match_feedback} />
               {missing.length > 0 && (
                 <div className="mt-3">
-                  <div className="eyebrow mb-1.5">Still missing from the JD</div>
+                  <div className="eyebrow mb-1.5">Still missing from the JD — click to add</div>
                   <div className="flex flex-wrap gap-1.5">
                     {missing.slice(0, 12).map((k) => (
-                      <span key={k} className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-[0.7rem] text-amber">
-                        {k}
-                      </span>
+                      <button
+                        key={k}
+                        onClick={() => s.insertKeyword(k)}
+                        disabled={reformatting}
+                        title="Add this skill to your resume"
+                        className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-[0.7rem] text-amber transition hover:bg-amber/20 disabled:opacity-50"
+                      >
+                        + {k}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -90,6 +96,11 @@ export function Forge() {
         <div className="mt-5">
           <DownloadBar pdfId={s.resume.pdfId} docxId={s.resume.docxId} pdfName={s.resume.pdfName} docxName={s.resume.docxName} />
         </div>
+      </Card>
+
+      <Card>
+        <SectionTitle title="Preview" hint={reformatting ? "Rebuilding…" : undefined} />
+        <PdfPreview pdfId={s.resume.pdfId} title="Resume preview" />
       </Card>
 
       <Card>
@@ -151,11 +162,6 @@ export function Forge() {
       </Card>
 
       {s.error && <ErrorNote message={s.error} />}
-
-      <Card>
-        <SectionTitle title="Preview" />
-        <PdfPreview pdfId={s.resume.pdfId} title="Resume preview" />
-      </Card>
     </div>
   );
 }

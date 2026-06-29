@@ -135,8 +135,9 @@ def _run(para, text, bold=False, italic=False, size=10.0, color=BLACK, font="Cal
     return r
 
 
-def _set_right_tab(para, pos_twips=10080):
-    """Add a right-aligned tab stop (used for date columns)."""
+def _set_right_tab(para, pos_twips=10440):
+    """Add a right-aligned tab stop (used for date columns). Default ≈7.25in,
+    the A4 right margin, so dates sit flush right with maximum room."""
     pPr = para._p.get_or_add_pPr()
     tabs = OxmlElement("w:tabs")
     tab = OxmlElement("w:tab")
@@ -144,6 +145,27 @@ def _set_right_tab(para, pos_twips=10080):
     tab.set(qn("w:pos"), str(pos_twips))
     tabs.append(tab)
     pPr.append(tabs)
+
+
+# Right tab position in points (10440 twips / 20) — the width a "left  →  right"
+# entry line must fit within before the right-hand date wraps to the next line.
+_RIGHT_TAB_PT = 10440 / 20
+
+
+def _fit_entry_size(left: str, right: str, bs: float, floor: float = 8.5) -> float:
+    """Shrink the font for an entry header (e.g. 'Long University Name … dates')
+    just enough that the right-aligned text stays on the same line instead of
+    wrapping. Width is approximated from char count; only ever shrinks."""
+    chars = len(left or "") + len(right or "")
+    if chars == 0:
+        return bs
+    # ~0.7 * size pt per char for a mixed-case proportional font (measured against
+    # rendered output), plus a 12pt gap so the two sides never touch or wrap.
+    factor, gap = 0.7, 12
+    need = chars * factor * bs + gap
+    if need <= _RIGHT_TAB_PT:
+        return bs
+    return max(floor, round((_RIGHT_TAB_PT - gap) / (chars * factor), 1))
 
 
 def _add_hyperlink(para, text, url, size=9.0, font="Calibri"):
@@ -336,29 +358,34 @@ def _add_experience(
     bs = fc.body_size or _fs("body", one_page)
 
     for exp in experience:
+        company, dates = exp.get("company", ""), exp.get("dates", "")
+        title, location = exp.get("title", ""), exp.get("location", "")
+        # One size for the whole entry so the date/location never wrap off-line.
+        ebs = min(_fit_entry_size(company, dates, bs), _fit_entry_size(title, location, bs))
+
         p1 = doc.add_paragraph()
         _spacing(p1, before=_sp("entry_before", one_page), after=0)
         _set_right_tab(p1)
-        rb = p1.add_run(exp.get("company", ""))
+        rb = p1.add_run(company)
         rb.bold = True
-        rb.font.size = Pt(bs)
+        rb.font.size = Pt(ebs)
         rb.font.color.rgb = BLACK
         rb.font.name = fc.body_font
         _run(p1, "\t", font=fc.body_font)
-        _run(p1, exp.get("dates", ""), size=bs, color=BLACK, font=fc.body_font)
+        _run(p1, dates, size=ebs, color=BLACK, font=fc.body_font)
 
         p2 = doc.add_paragraph()
         _spacing(p2, before=0, after=0)
         _set_right_tab(p2)
-        ri = p2.add_run(exp.get("title", ""))
+        ri = p2.add_run(title)
         ri.italic = True
-        ri.font.size = Pt(bs)
+        ri.font.size = Pt(ebs)
         ri.font.color.rgb = BLACK
         ri.font.name = fc.body_font
         _run(p2, "\t", font=fc.body_font)
-        rl = p2.add_run(exp.get("location", ""))
+        rl = p2.add_run(location)
         rl.italic = True
-        rl.font.size = Pt(bs)
+        rl.font.size = Pt(ebs)
         rl.font.color.rgb = BLACK
         rl.font.name = fc.body_font
 
@@ -431,32 +458,34 @@ def _add_education(doc, education: list, one_page: bool, fc: FontConfig = DEFAUL
     bs = fc.body_size or _fs("body", one_page)
 
     for edu in education:
+        school, dates = edu.get("school", ""), edu.get("dates", "")
+        degree_str, location = edu.get("degree", ""), edu.get("location", "")
+        # Long university names used to push the date onto the next line — shrink to fit.
+        ebs = min(_fit_entry_size(school, dates, bs), _fit_entry_size(degree_str, location, bs))
+
         p1 = doc.add_paragraph()
         _spacing(p1, before=_sp("entry_before", one_page), after=0)
         _set_right_tab(p1)
-        rb = p1.add_run(edu.get("school", ""))
+        rb = p1.add_run(school)
         rb.bold = True
-        rb.font.size = Pt(bs)
+        rb.font.size = Pt(ebs)
         rb.font.color.rgb = BLACK
         rb.font.name = fc.body_font
         _run(p1, "\t", font=fc.body_font)
-        _run(
-            p1, edu.get("dates", ""), bold=True, size=bs, color=BLACK, font=fc.body_font
-        )
+        _run(p1, dates, bold=True, size=ebs, color=BLACK, font=fc.body_font)
 
-        degree_str = edu.get("degree", "")
         p2 = doc.add_paragraph()
         _spacing(p2, before=0, after=0)
         _set_right_tab(p2)
         ri = p2.add_run(degree_str)
         ri.italic = True
-        ri.font.size = Pt(bs)
+        ri.font.size = Pt(ebs)
         ri.font.color.rgb = BLACK
         ri.font.name = fc.body_font
         _run(p2, "\t", font=fc.body_font)
-        rl = p2.add_run(edu.get("location", ""))
+        rl = p2.add_run(location)
         rl.italic = True
-        rl.font.size = Pt(bs)
+        rl.font.size = Pt(ebs)
         rl.font.color.rgb = BLACK
         rl.font.name = fc.body_font
 

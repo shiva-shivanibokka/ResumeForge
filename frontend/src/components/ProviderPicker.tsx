@@ -1,5 +1,5 @@
 import { useStore } from "../store";
-import { Badge, Input, Label, Select } from "./ui";
+import { Input, Label, Select } from "./ui";
 
 // Choose an LLM provider + model and supply a key. Free providers are flagged so
 // a visitor can run the live demo at no cost with their own free key.
@@ -15,7 +15,7 @@ export function ProviderPicker() {
           {providers.length === 0 && <option value={provider}>{provider}</option>}
           {providers.map((p) => (
             <option key={p.key} value={p.key}>
-              {p.label} — {p.free_tier ? "free" : "paid"}
+              {p.label}
             </option>
           ))}
         </Select>
@@ -44,11 +44,8 @@ export function ProviderPicker() {
         />
       </div>
 
-      {current && (
-        <div className="sm:col-span-3 flex items-center gap-2 text-xs text-ash">
-          {current.free_tier ? <Badge tone="free">free tier</Badge> : <Badge tone="ember">paid</Badge>}
-          <span>{current.notes}</span>
-        </div>
+      {current?.notes && (
+        <div className="sm:col-span-3 text-xs text-ash">{current.notes}</div>
       )}
     </div>
   );
