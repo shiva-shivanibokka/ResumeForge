@@ -14,7 +14,8 @@ export const FALLBACK_PROVIDERS: ProviderInfo[] = [
     models: [
       { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", free: true },
       { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", free: true },
-      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", free: true },
+      { id: "gemini-1.5-flash-8b", label: "Gemini 1.5 Flash-8B", free: true },
+      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", free: false },
     ],
   },
   {
@@ -27,6 +28,7 @@ export const FALLBACK_PROVIDERS: ProviderInfo[] = [
     models: [
       { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", free: true },
       { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B (fast)", free: true },
+      { id: "gemma2-9b-it", label: "Gemma 2 9B", free: true },
     ],
   },
   {

@@ -15,8 +15,7 @@ export function ProviderPicker() {
           {providers.length === 0 && <option value={provider}>{provider}</option>}
           {providers.map((p) => (
             <option key={p.key} value={p.key}>
-              {p.label}
-              {p.free_tier ? " — free" : ""}
+              {p.label} — {p.free_tier ? "free" : "paid"}
             </option>
           ))}
         </Select>
@@ -27,7 +26,7 @@ export function ProviderPicker() {
         <Select id="model" value={model} onChange={(e) => set("model", e.target.value)}>
           {(current?.models ?? [{ id: model, label: model, free: false }]).map((m) => (
             <option key={m.id} value={m.id}>
-              {m.label}
+              {m.label} — {m.free ? "free" : "paid"}
             </option>
           ))}
         </Select>

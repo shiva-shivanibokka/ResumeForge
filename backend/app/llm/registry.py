@@ -66,7 +66,8 @@ PROVIDERS: dict[str, ProviderInfo] = {
         models=[
             ModelInfo("gemini-2.0-flash", "Gemini 2.0 Flash", free=True),
             ModelInfo("gemini-1.5-flash", "Gemini 1.5 Flash", free=True),
-            ModelInfo("gemini-1.5-pro", "Gemini 1.5 Pro", free=True),
+            ModelInfo("gemini-1.5-flash-8b", "Gemini 1.5 Flash-8B", free=True),
+            ModelInfo("gemini-1.5-pro", "Gemini 1.5 Pro", free=False),
         ],
         notes="Generous free tier — great for a free live demo.",
     ),
@@ -79,6 +80,7 @@ PROVIDERS: dict[str, ProviderInfo] = {
         models=[
             ModelInfo("llama-3.3-70b-versatile", "Llama 3.3 70B", free=True),
             ModelInfo("llama-3.1-8b-instant", "Llama 3.1 8B (fast)", free=True),
+            ModelInfo("gemma2-9b-it", "Gemma 2 9B", free=True),
         ],
         notes="Free and very fast. Great for a free live demo.",
     ),
