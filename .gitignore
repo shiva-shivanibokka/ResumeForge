@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 
+# --- Audit / planning artifacts (generated, not product) ---
+AUDIT.md
+PLAN.md
+docs/superpowers/
+
 # --- Python ---
 __pycache__/
 *.pyc
