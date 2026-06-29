@@ -1,0 +1,53 @@
+name: Deploy API to Hugging Face Space
+
+# Auto-syncs backend/ to the HF Space on every push to main (and on demand).
+# HF rebuilds the Docker image when the Space repo receives the push.
+# Requires a repo secret HF_TOKEN (a Hugging Face *write* access token).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-hf-space.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: hf-space-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HF_USERNAME: shiva-1993
+      HF_SPACE: resumeforge-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push backend/ to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN secret is missing. Add it under repo Settings → Secrets and variables → Actions (a Hugging Face write token)."
+            exit 1
+          fi
+
+          BUILD="$(mktemp -d)"
+          cp -a backend/. "$BUILD"/
+          # Never publish local-only or build artifacts to the public Space.
+          rm -f "$BUILD"/.env
+          rm -rf "$BUILD"/.pytest_cache "$BUILD"/__pycache__ "$BUILD"/.ruff_cache "$BUILD"/app/__pycache__
+
+          cd "$BUILD"
+          git init -q
+          git checkout -q -b main
+          git config user.email "actions@users.noreply.github.com"
+          git config user.name "GitHub Actions"
+          git add -A
+          git commit -qm "Deploy from ${GITHUB_SHA::7}"
+          git push -q --force \
+            "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE}.git" main
+
+          echo "Synced backend/ → https://huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE} (HF will rebuild)."
