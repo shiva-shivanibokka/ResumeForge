@@ -261,27 +261,29 @@ def _add_header(doc, personal: dict, one_page: bool, fc: FontConfig = DEFAULT_FO
     if parts_plain:
         _run(p_contact, sep.join(parts_plain), size=cs, color=BLACK)
 
-    # LinkedIn — plain text full URL (no hyperlink styling)
+    # LinkedIn — short clickable label so the contact line stays on one row.
     linkedin_url = personal.get("linkedin_url", "")
     if not linkedin_url:
         raw = personal.get("linkedin", "")
         if "linkedin.com" in raw:
             linkedin_url = "https://" + raw if not raw.startswith("http") else raw
-        else:
-            linkedin_url = "https://www.linkedin.com/in/" + raw if raw else ""
+        elif raw and raw.lower() != "linkedin":
+            linkedin_url = "https://www.linkedin.com/in/" + raw
     if linkedin_url:
-        _run(p_contact, sep + linkedin_url, size=cs, color=BLACK)
+        _run(p_contact, sep, size=cs, color=BLACK)
+        _add_hyperlink(p_contact, "LinkedIn", linkedin_url, size=cs, font=fc.body_font)
 
-    # GitHub — plain text full URL (no hyperlink styling)
+    # GitHub — short clickable label.
     github_url = personal.get("github_url", "")
     if not github_url:
         raw = personal.get("github", "")
         if "github.com" in raw:
             github_url = "https://" + raw if not raw.startswith("http") else raw
-        else:
-            github_url = "https://github.com/" + raw if raw else ""
+        elif raw and raw.lower() != "github":
+            github_url = "https://github.com/" + raw
     if github_url:
-        _run(p_contact, sep + github_url, size=cs, color=BLACK)
+        _run(p_contact, sep, size=cs, color=BLACK)
+        _add_hyperlink(p_contact, "GitHub", github_url, size=cs, font=fc.body_font)
 
 
 
@@ -366,10 +368,10 @@ def _add_experience(
 
 
 
-def _bullet(doc, text: str, one_page: bool, indent=0.2, fc: FontConfig = DEFAULT_FONT):
+def _bullet(doc, text: str, one_page: bool, indent=0.28, fc: FontConfig = DEFAULT_FONT):
     p = doc.add_paragraph(style="List Bullet")
     p.paragraph_format.left_indent = Inches(indent)
-    p.paragraph_format.first_line_indent = Inches(-0.15)
+    p.paragraph_format.first_line_indent = Inches(-0.16)
     sp = _sp("bullet_space", one_page)
     p.paragraph_format.space_before = Pt(sp)
     p.paragraph_format.space_after = Pt(sp)
