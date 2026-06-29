@@ -4,7 +4,9 @@
 
 ResumeForge takes your raw materials (a job posting, your current resume, your GitHub profile), reforges them for one specific role, and scores the result against the job. Pick your engine — **Anthropic Claude, OpenAI, Google Gemini, or Groq** — and bring your own key (Gemini and Groq have free tiers, so the live demo costs nothing to run).
 
-> Live demo: _add your deployed URL_ · API docs: `/<backend-url>/docs` (auto-generated OpenAPI)
+> **Live demo:** https://resume-forge-eight-olive.vercel.app · **API docs:** https://resumeforge-api-pe93.onrender.com/docs (auto-generated OpenAPI)
+>
+> _The backend is on Render's free tier — the first request after idle may take ~30–60s to wake._
 
 ---
 

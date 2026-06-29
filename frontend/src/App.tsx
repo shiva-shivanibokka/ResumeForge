@@ -21,12 +21,12 @@ function Header() {
           </div>
         </div>
         <a
-          href="https://github.com"
+          href="https://github.com/shiva-shivanibokka/ResumeForge"
           target="_blank"
           rel="noopener noreferrer"
           className="hidden text-xs text-ash transition hover:text-chalk sm:block"
         >
-          About
+          GitHub
         </a>
       </div>
     </header>
