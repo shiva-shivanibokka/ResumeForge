@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { ApiError, getJson, post, streamPost } from "./lib/api";
+import { FALLBACK_PROVIDERS } from "./lib/providers";
 import type {
   AnalyseResponse,
   CoverLetterDone,
@@ -93,9 +94,9 @@ function creds(s: State, form: FormData) {
 }
 
 export const useStore = create<State>((set, get) => ({
-  providers: [],
+  providers: FALLBACK_PROVIDERS,
   provider: "gemini",
-  model: "",
+  model: "gemini-2.0-flash",
   apiKey: "",
   ghToken: "",
 

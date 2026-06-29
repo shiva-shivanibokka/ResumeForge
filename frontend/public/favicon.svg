@@ -1,9 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#0E0F12"/>
-  <!-- anvil -->
-  <path d="M7 17h13l-2 3h-3v3h-3v-3H8z" fill="#2A2E37"/>
-  <rect x="11" y="23" width="7" height="2.5" rx="1" fill="#2A2E37"/>
-  <!-- ember spark -->
-  <circle cx="22.5" cy="11" r="3.5" fill="#FF6A1A"/>
-  <circle cx="22.5" cy="11" r="1.4" fill="#FFF4E6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c5cfc"/>
+      <stop offset="0.55" stop-color="#ec4899"/>
+      <stop offset="1" stop-color="#ff5a1f"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="42" height="42" rx="13" fill="url(#g)"/>
+  <g transform="rotate(-38 22 22)" fill="#fff">
+    <rect x="20.2" y="12.5" width="3.6" height="20" rx="1.8"/>
+    <rect x="12.5" y="10.5" width="19" height="6.6" rx="2.6"/>
+  </g>
 </svg>
