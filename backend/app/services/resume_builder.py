@@ -156,6 +156,7 @@ def _fit_entry_size(left: str, right: str, bs: float, floor: float = 8.5) -> flo
     """Shrink the font for an entry header (e.g. 'Long University Name … dates')
     just enough that the right-aligned text stays on the same line instead of
     wrapping. Width is approximated from char count; only ever shrinks."""
+    floor = min(floor, bs)  # never return a size LARGER than the body (dense resumes)
     chars = len(left or "") + len(right or "")
     if chars == 0:
         return bs

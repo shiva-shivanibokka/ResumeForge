@@ -13,16 +13,18 @@
 
 ## Production-readiness scorecard
 
-| Category | Status | Notes |
-|---|---|---|
-| Correctness | ❌ | Entry-header font floor can exceed body size (defeats 1-page); frontend keeps stale state across two different jobs |
-| Silent failures | ❌ | Cover-letter build failure returns HTTP 200 with no file and no error; GitHub auth errors misreported as "no repos" |
-| Security | ❌ | Live API keys in working-tree `.env` (rotate); SSRF via unfollowed-redirect re-check; no rate limit on server-key fallback |
-| Concurrency | ❌ | Every non-SSE `async def` handler runs blocking LLM/DB/subprocess work on the event loop (single-worker → full freeze) |
-| Performance | ❌ | GitHub N+1 (≤100 repos × many calls); no DB pool; upload fully buffered before size check |
-| Architecture | ⚠️ | Notes only: process-local file store, mixed db/rag access, one god-closure |
-| Production-readiness | ❌ | GitHub module swallows all errors with zero logging; SSE latency metric measures only TTFB |
-| Test coverage | ⚠️ | 60 tests pass; error paths (SSRF, cover-letter build failure, auto-fit floor) have no coverage |
+Status columns: **Found** = at audit time · **After** = after the fixes in `PLAN.md` were applied (2026-06-29).
+
+| Category | Found | After | Notes |
+|---|---|---|---|
+| Correctness | ❌ | ✅ | Floor bug fixed (header ≤ body); analyse() resets downstream state |
+| Silent failures | ❌ | ✅ | Cover-letter build failure now raises; GitHub auth/rate-limit surfaced distinctly with logging |
+| Security | ❌ | ⚠️ | SSRF redirect re-validated; rate limiter added; CORS credentials off. Remaining: key rotation (operational, done by user) |
+| Concurrency | ❌ | ✅ | Blocking handlers moved off the loop (sync `def` / `run_in_threadpool`); SSE queue bounded |
+| Performance | ❌ | ✅ | GitHub fan-out capped at 30; DB connection pool added; upload streamed with early size cap |
+| Architecture | ⚠️ | ⚠️ | Notes only (unchanged by design): process-local file store, mixed db/rag access, one god-closure |
+| Production-readiness | ❌ | ✅ | GitHub module logs failures; rate-limit/auth distinguishable in logs |
+| Test coverage | ⚠️ | ✅ | 65 tests pass; added regression tests for floor bug, rate limiter, SSRF redirect |
 
 (✅ none · ⚠️ minor/notes only · ❌ ≥1 major/critical)
 

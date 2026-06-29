@@ -111,7 +111,8 @@ def gap_analysis_markdown(gap: dict) -> str:
         lines += ["### ❌ Required Skills Missing from Your Resume", ""]
         lines += ["| Skill | Why It Matters |", "|---|---|"]
         for item in req:
-            lines.append(f"| `{item['keyword']}` | {item.get('explanation', '')} |")
+            if item.get("keyword"):
+                lines.append(f"| `{item['keyword']}` | {item.get('explanation', '')} |")
         lines.append("")
 
     pref = gap.get("preferred_missing", [])
@@ -119,7 +120,8 @@ def gap_analysis_markdown(gap: dict) -> str:
         lines += ["### 🔶 Preferred Skills Not Yet Listed", ""]
         lines += ["| Skill | Why It Helps |", "|---|---|"]
         for item in pref:
-            lines.append(f"| `{item['keyword']}` | {item.get('explanation', '')} |")
+            if item.get("keyword"):
+                lines.append(f"| `{item['keyword']}` | {item.get('explanation', '')} |")
         lines.append("")
 
     cats = gap.get("skill_categories", {})

@@ -269,7 +269,10 @@ def parse_resume(file_path: str, llm, file_bytes: bytes = None) -> dict:
     Full pipeline: extract text → parse with Claude → return structured dict.
     """
     raw_text = extract_raw_text(file_path, file_bytes)
-    if not raw_text or raw_text.startswith("["):
+    # Match the specific failure sentinels, not any leading "[" — a résumé whose
+    # text legitimately starts with "[" must not be misread as an extraction failure.
+    _FAIL = ("[PDF extraction failed:", "[DOCX extraction failed:")
+    if not raw_text or raw_text.startswith(_FAIL):
         return {
             "name": "",
             "email": "",

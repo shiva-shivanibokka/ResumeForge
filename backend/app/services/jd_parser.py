@@ -17,6 +17,25 @@ import requests
 from bs4 import BeautifulSoup
 
 from app.llm import LLMError
+from app.security import assert_public_http_url
+
+
+def _get_safely(url: str, max_hops: int = 4) -> requests.Response:
+    """GET `url`, following redirects MANUALLY so the SSRF guard re-runs on every
+    hop. Default redirect-following would let a public URL bounce to an internal /
+    cloud-metadata address after the one-time check at submit. Raises ValueError
+    (from the guard) if any hop resolves to a non-public address."""
+    for _ in range(max_hops + 1):
+        resp = requests.get(url, headers=HEADERS, timeout=20, allow_redirects=False)
+        if resp.is_redirect or resp.is_permanent_redirect:
+            loc = resp.headers.get("Location")
+            if not loc:
+                return resp
+            url = requests.compat.urljoin(url, loc)
+            assert_public_http_url(url)  # re-validate the redirect target
+            continue
+        return resp
+    raise requests.exceptions.RequestException("Too many redirects.")
 
 HEADERS = {
     "User-Agent": (
@@ -125,7 +144,7 @@ def fetch_jd_text(url: str) -> dict:
         return result
 
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp = _get_safely(url)
         if resp.status_code in (401, 403, 999):
             result["error"] = (
                 f"Access denied (HTTP {resp.status_code}). "
@@ -134,6 +153,9 @@ def fetch_jd_text(url: str) -> dict:
             )
             return result
         resp.raise_for_status()
+    except ValueError as e:  # SSRF guard rejected a redirect target
+        result["error"] = f"Blocked an unsafe redirect: {e}"
+        return result
     except requests.exceptions.Timeout:
         result["error"] = "Request timed out. The page took too long to respond."
         return result

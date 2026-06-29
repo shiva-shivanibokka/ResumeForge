@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     request_timeout_s: int = 60
     llm_max_retries: int = 2
 
+    # Per-IP rate limit for expensive LLM/crawl endpoints (protects the optional
+    # server-side key fallback from anonymous quota drain). Set max to 0 to disable.
+    rate_limit_max: int = 30
+    rate_limit_window_s: int = 3600
+
     # Postgres (Neon) connection string for the RAG embedding cache. When unset,
     # the embedding feature is disabled and project ranking falls back to the LLM.
     database_url: str | None = None

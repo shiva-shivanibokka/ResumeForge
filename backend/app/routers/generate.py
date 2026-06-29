@@ -215,7 +215,7 @@ async def generate_resume(
 
 
 @router.post("/edit-resume")
-async def edit_resume(
+def edit_resume(  # sync: FastAPI runs it in a threadpool (blocking LLM + PDF work)
     provider: str = Form("anthropic"),
     model: str = Form(""),
     edit_instructions: str = Form(...),
@@ -275,7 +275,7 @@ async def edit_resume(
 
 
 @router.post("/rebuild-resume")
-async def rebuild_resume(
+def rebuild_resume(  # sync: runs in a threadpool (blocking PDF render)
     matched_payload: str = Form(...),
     resume_data: str = Form(...),
     page_option: str = Form("1-page"),

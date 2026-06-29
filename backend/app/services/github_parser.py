@@ -17,6 +17,20 @@ import re
 
 import requests
 
+from app.logging import get_logger
+
+logger = get_logger("github")
+
+
+class GitHubAccessError(Exception):
+    """A GitHub auth failure or rate-limit — distinct from a user simply having
+    no repos, so the caller can show the right message instead of 'no repos'."""
+
+    def __init__(self, status: int, message: str):
+        self.status = status
+        super().__init__(message)
+
+
 # GITHUB API CLIENT
 
 
@@ -33,14 +47,28 @@ def _github_headers(token: str | None = None) -> dict:
 
 
 def _get(url: str, token: str | None = None) -> dict | None:
-    """Make a GET request to GitHub API, return JSON or None on error."""
+    """GET a GitHub API URL. Returns JSON on 200, None for a benign miss (e.g. 404
+    on a probed filename). Raises GitHubAccessError on auth failure / rate-limit so
+    those don't masquerade as 'no repos'. Network errors log + return None."""
     try:
         resp = requests.get(url, headers=_github_headers(token), timeout=15)
-        if resp.status_code == 200:
-            return resp.json()
+    except requests.RequestException as e:
+        logger.warning("github_request_failed", url=url, error=str(e))
         return None
-    except Exception:
-        return None
+    if resp.status_code == 200:
+        return resp.json()
+    remaining = resp.headers.get("X-RateLimit-Remaining")
+    if resp.status_code == 429 or (resp.status_code == 403 and remaining == "0"):
+        logger.warning("github_rate_limited", url=url, status=resp.status_code)
+        raise GitHubAccessError(
+            resp.status_code,
+            "GitHub API rate limit reached. Add a GITHUB_TOKEN (or wait) and retry.",
+        )
+    if resp.status_code == 401:
+        logger.warning("github_auth_failed", url=url)
+        raise GitHubAccessError(401, "GitHub authentication failed — check your GITHUB_TOKEN.")
+    logger.info("github_non_200", url=url, status=resp.status_code)
+    return None
 
 
 def _get_file_content(
@@ -319,13 +347,14 @@ def parse_github_profile(
     result["profile_url"] = f"https://github.com/{username}"
     log(f"Fetching repositories for @{username}...")
 
-    # 2. Get repo list
-    repos = get_user_repos(username, token, max_repos=max_repos)
+    # 2. Get repo list (auth/rate-limit errors surface distinctly from "no repos")
+    try:
+        repos = get_user_repos(username, token, max_repos=max_repos)
+    except GitHubAccessError as e:
+        result["error"] = str(e)
+        return result
     if not repos:
-        result["error"] = (
-            f"No public repositories found for @{username}, or the GitHub API rate limit was hit. "
-            "Add a GITHUB_TOKEN to increase the rate limit."
-        )
+        result["error"] = f"No public repositories found for @{username}."
         return result
 
     log(f"Found {len(repos)} repositories. Analysing in parallel...")

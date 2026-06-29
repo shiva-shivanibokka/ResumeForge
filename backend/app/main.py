@@ -15,12 +15,38 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from app.config import get_settings
 from app.logging import configure_logging, get_logger
 from app.metrics import METRICS
+from app.ratelimit import check_rate, client_ip
 from app.routers import analyse, cover_letter, files, generate, meta, projects
 from app.store import get_store
+
+# Expensive LLM/crawl endpoints protected by the per-IP rate limiter. Cheap/polled
+# routes (/projects/cache) and frequent layout tweaks (/rebuild-resume) are excluded.
+_RATE_LIMITED_PATHS = {
+    "/api/analyse",
+    "/api/generate",
+    "/api/fetch-projects",
+    "/api/cover-letter",
+    "/api/edit-cover-letter",
+    "/api/edit-resume",
+}
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """429 a client that exceeds the per-IP window on expensive endpoints."""
+
+    async def dispatch(self, request, call_next):
+        if request.method == "POST" and request.url.path in _RATE_LIMITED_PATHS:
+            if not check_rate(client_ip(request)):
+                return JSONResponse(
+                    {"detail": "Rate limit reached. Please slow down, or use your own API key."},
+                    status_code=429,
+                )
+        return await call_next(request)
 
 
 class RequestObservabilityMiddleware(BaseHTTPMiddleware):
@@ -73,6 +99,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         store.stop()
+        db.close_pool()
 
 
 def create_app() -> FastAPI:
@@ -83,11 +110,14 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
         allow_origin_regex=(settings.allowed_origin_regex or None),
-        allow_credentials=True,
+        # No cookies/session auth (BYOK) — credentials must stay off so a hostile
+        # *.vercel.app origin can't make credentialed cross-origin requests.
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
     app.add_middleware(RequestObservabilityMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
     app.include_router(meta.router)
     app.include_router(analyse.router)

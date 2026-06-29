@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from app.deps import get_llm, https, save_upload
 from app.security import assert_public_http_url
@@ -34,7 +35,8 @@ async def analyse(
             safe_url = assert_public_http_url(jd_url.strip())
         except ValueError as e:
             raise HTTPException(400, f"Invalid job URL: {e}") from e
-        r = fetch_jd_text(safe_url)
+        # Blocking network call — keep it off the event loop.
+        r = await run_in_threadpool(fetch_jd_text, safe_url)
         if r["success"]:
             jd_raw = r["text"]
         else:
@@ -44,18 +46,20 @@ async def analyse(
     if not jd_raw:
         raise HTTPException(400, jd_url_error or "Provide a job URL or paste the JD text.")
 
-    jd_structured = extract_jd_structured(jd_raw, llm)
+    jd_structured = await run_in_threadpool(extract_jd_structured, jd_raw, llm)
 
     resume_path = await save_upload(resume_file)
     try:
-        resume_data = parse_resume(resume_path, llm)
+        resume_data = await run_in_threadpool(parse_resume, resume_path, llm)
     finally:
         try:
             os.remove(resume_path)
         except OSError:
             pass
 
-    gap = quick_gap_analysis(jd_raw, resume_data.get("raw_text", ""), llm)
+    gap = await run_in_threadpool(
+        quick_gap_analysis, jd_raw, resume_data.get("raw_text", ""), llm
+    )
     li = https(linkedin_url) if linkedin_url.strip() else https(resume_data.get("linkedin", ""))
 
     return {
@@ -67,11 +71,13 @@ async def analyse(
         "gap": gap,
         "gap_markdown": gap_analysis_markdown(gap),
         "required_keywords": [
-            {"keyword": i["keyword"], "explanation": i.get("explanation", "")}
+            {"keyword": i.get("keyword"), "explanation": i.get("explanation", "")}
             for i in gap.get("required_missing", [])
+            if i.get("keyword")
         ],
         "preferred_keywords": [
-            {"keyword": i["keyword"], "explanation": i.get("explanation", "")}
+            {"keyword": i.get("keyword"), "explanation": i.get("explanation", "")}
             for i in gap.get("preferred_missing", [])
+            if i.get("keyword")
         ],
     }

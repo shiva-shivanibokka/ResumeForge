@@ -12,6 +12,7 @@ Read paths degrade to "empty" on any error so the API never 500s on a DB hiccup.
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -20,6 +21,11 @@ from app.config import get_settings
 from app.logging import get_logger
 
 log = get_logger("db")
+
+# Lazily-created connection pool — avoids a fresh connect on every call (Neon is
+# connection-capped and cold-starts). Created on first DB use, only when enabled.
+_pool = None
+_pool_lock = threading.Lock()
 
 _CREATE = """
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -45,15 +51,39 @@ def is_enabled() -> bool:
     return bool((get_settings().database_url or "").strip())
 
 
+def _get_pool():
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                from psycopg_pool import ConnectionPool
+
+                _pool = ConnectionPool(
+                    get_settings().database_url,
+                    min_size=0,
+                    max_size=4,
+                    max_idle=60.0,
+                    kwargs={"autocommit": True},
+                    open=True,
+                )
+    return _pool
+
+
 @contextmanager
 def _conn() -> Iterator:
-    import psycopg
-
-    conn = psycopg.connect(get_settings().database_url, autocommit=True)
-    try:
+    with _get_pool().connection() as conn:
         yield conn
-    finally:
-        conn.close()
+
+
+def close_pool() -> None:
+    """Close the pool on shutdown (best-effort)."""
+    global _pool
+    if _pool is not None:
+        try:
+            _pool.close()
+        except Exception as e:  # noqa: BLE001
+            log.warning("db_pool_close_failed", error=str(e))
+        _pool = None
 
 
 def _vec(values: list[float]) -> str:

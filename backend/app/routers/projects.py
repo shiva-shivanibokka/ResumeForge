@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api", tags=["projects"])
 
 
 @router.get("/projects/cache")
-async def projects_cache(github_url: str = Query("")):
+def projects_cache(github_url: str = Query("")):  # sync: DB call runs in a threadpool
     """Cache status for the UI: whether this GitHub user's projects are embedded."""
     user = parse_github_url(https(github_url)) if github_url.strip() else None
     if not user or not db.is_enabled():
@@ -54,8 +54,10 @@ async def fetch_projects(
     use_rag = bool(user) and db.is_enabled() and embedder is not None
 
     def crawl_summarize(progress):
+        # Cap fan-out: each repo costs several GitHub calls + an LLM call, so crawl
+        # only the 30 most-recently-updated (repos are returned newest-first).
         gh_result = parse_github_profile(
-            gh, llm, token=token, max_repos=100, progress_callback=progress
+            gh, llm, token=token, max_repos=30, progress_callback=progress
         )
         if not gh_result["success"]:
             raise RuntimeError(gh_result["error"])
@@ -85,7 +87,7 @@ async def fetch_projects(
                 progress("Ranking projects for this JD (vector search)...")
                 ranked = rag.rank(user, jd_dict, embedder, top_n=10)
                 if ranked:
-                    return {"ranked": ranked, "all_projects": all_projects, "count": len(ranked), "mode": "rag"}
+                    return {"ranked": ranked, "count": len(ranked), "mode": "rag"}
                 progress("Vector search returned nothing — using direct ranking...")
             except Exception as e:  # noqa: BLE001 - degrade to the LLM path
                 progress(f"Embedding path unavailable — using direct ranking. ({e})")
@@ -95,7 +97,7 @@ async def fetch_projects(
             all_projects = crawl_summarize(progress)
         progress("Ranking top 10 projects for this JD...")
         ranked = rank_projects_for_jd(jd_dict, all_projects, llm, top_n=10)
-        return {"ranked": ranked, "all_projects": all_projects, "count": len(ranked), "mode": "llm"}
+        return {"ranked": ranked, "count": len(ranked), "mode": "llm"}
 
     return StreamingResponse(
         stream_work(work), media_type="text/event-stream", headers=SSE_HEADERS

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, HTTPException
 
 from app.deps import get_llm
 from app.services.cover_letter import (
@@ -19,6 +19,12 @@ router = APIRouter(prefix="/api", tags=["cover-letter"])
 
 
 def _file_fields(cl_result: dict) -> dict:
+    # Surface build failures instead of returning 200 with null file ids.
+    if cl_result.get("error") or not cl_result.get("docx_path"):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Cover letter build failed: {cl_result.get('error') or 'no document produced'}",
+        )
     store = get_store()
     docx_path = cl_result.get("docx_path")
     pdf_path = cl_result.get("pdf_path")
@@ -31,7 +37,7 @@ def _file_fields(cl_result: dict) -> dict:
 
 
 @router.post("/cover-letter")
-async def generate_cover_letter(
+def generate_cover_letter(  # sync: FastAPI runs it in a threadpool (blocking LLM/PDF work)
     provider: str = Form("anthropic"),
     model: str = Form(""),
     tone: str = Form("Professional"),
@@ -68,7 +74,7 @@ async def generate_cover_letter(
 
 
 @router.post("/edit-cover-letter")
-async def edit_cover_letter(
+def edit_cover_letter(  # sync: runs in a threadpool
     provider: str = Form("anthropic"),
     model: str = Form(""),
     edit_instructions: str = Form(...),

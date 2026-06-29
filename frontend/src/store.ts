@@ -196,7 +196,19 @@ export const useStore = create<State>((set, get) => ({
         analysis: data,
         linkedinUrl: data.linkedin_url || s.linkedinUrl,
         selectedKeywords: [],
-        reached: { ...get().reached, projects: true },
+        // Re-analysing is a fresh job: clear everything downstream so a previous
+        // job's projects/resume/scores/cover never leak into the new run.
+        ranked: [],
+        selectedProjects: [],
+        matchedPayload: null,
+        resume: { docxId: null, pdfId: null, docxName: null, pdfName: null },
+        scores: null,
+        beforeScores: null,
+        jobLabel: "",
+        generateLog: [],
+        letterText: "",
+        cover: { docxId: null, pdfId: null, docxName: null, pdfName: null },
+        reached: { materials: true, projects: true, forge: false, letter: false },
         step: "projects",
       });
       get().loadCacheStatus();
@@ -340,7 +352,10 @@ export const useStore = create<State>((set, get) => ({
       form.set("font_family", s.fontFamily);
       form.set("font_size", s.fontSize);
       const d = await post<GenerateDone>("/api/rebuild-resume", form);
-      set({ resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name } });
+      set({
+        matchedPayload: d.matched_payload ?? s.matchedPayload,
+        resume: { docxId: d.docx_id, pdfId: d.pdf_id, docxName: d.docx_name, pdfName: d.pdf_name },
+      });
     } catch (e) {
       set({ error: msg(e) });
     } finally {

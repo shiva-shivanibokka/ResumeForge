@@ -6,7 +6,13 @@ export function Projects() {
   const s = useStore();
   const fetching = s.busy === "projects";
   const a = s.analysis;
-  const keywords = [...(a?.required_keywords ?? []), ...(a?.preferred_keywords ?? [])];
+  // De-dupe by keyword text so a keyword the LLM emits in both lists doesn't
+  // produce duplicate React keys (which breaks chip toggling).
+  const keywords = [
+    ...new Map(
+      [...(a?.required_keywords ?? []), ...(a?.preferred_keywords ?? [])].map((k) => [k.keyword, k]),
+    ).values(),
+  ];
   const matchedSkills =
     ((a?.gap as Record<string, unknown> | undefined)?.already_have as string[] | undefined) ?? [];
 

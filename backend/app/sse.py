@@ -28,7 +28,9 @@ async def stream_work(work: Callable[[Callable[[str], None]], dict]) -> AsyncIte
     `work` receives a `progress(msg: str)` callback and returns the final result
     dict (merged into the `done` event). Any exception becomes an `error` event.
     """
-    q: queue.Queue[str] = queue.Queue()
+    # Bounded so a fast producer can't grow memory without limit; progress()
+    # applies light backpressure if the client is slow to drain.
+    q: queue.Queue[str] = queue.Queue(maxsize=2000)
     state: dict = {}
 
     def progress(msg: str) -> None:

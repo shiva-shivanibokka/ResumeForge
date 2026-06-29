@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -35,18 +36,31 @@ def https(url: str) -> str:
 
 
 async def save_upload(file: UploadFile) -> str:
-    """Validate (type + size) and persist an upload to a temp file; return its path."""
-    content = await file.read()
+    """Validate the type, then stream the upload to a temp file enforcing the size
+    cap as we go — so an oversized file is rejected without buffering it all in RAM
+    (which could OOM a small instance before a post-read size check fires)."""
     settings = get_settings()
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    # Cheap extension check up front (size 0 => validate type only), before reading.
     try:
-        validate_upload(file.filename or "", len(content), settings.max_upload_mb)
+        validate_upload(file.filename or "", 0, settings.max_upload_mb)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     suffix = Path(file.filename).suffix if file.filename else ".pdf"
     fd, tmp = tempfile.mkstemp(suffix=suffix, prefix="rf_upload_")
-    Path(tmp).write_bytes(content)
-    import os
-
-    os.close(fd)
+    size = 0
+    try:
+        with os.fdopen(fd, "wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large. Max is {settings.max_upload_mb} MB.",
+                    )
+                out.write(chunk)
+    except HTTPException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return tmp

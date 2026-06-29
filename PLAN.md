@@ -1,6 +1,13 @@
 # Fix Plan — ResumeForge
 
-Generated from repo-bug-audit on 2026-06-29. 19 tasks, ordered by severity (Critical first). Nothing here has been applied — these are for review. The 6 trivial-safe items were already auto-fixed (see `AUDIT.md`).
+Generated from repo-bug-audit on 2026-06-29. 19 tasks, ordered by severity (Critical first).
+
+> **STATUS — all tasks applied 2026-06-29.** Tasks 2–19 were implemented and
+> verified (65 tests pass, ruff + tsc clean). **Task 1 is operational** (key
+> rotation) — the user removed `backend/.env`; the keys were inactive and never in
+> git history, so no scrub is needed. Task 14 was applied as a bounded SSE queue;
+> true mid-LLM cancellation is left as a documented limitation (needs `work()`
+> cooperation). The 6 trivial-safe items were auto-fixed earlier (see `AUDIT.md`).
 
 ---
 
